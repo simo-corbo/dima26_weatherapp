@@ -1,0 +1,802 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weather — Design Contract</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* ---- palette (flat blue / white text) ---- */
+    --sky-top:#5AA9F5;
+    --sky-mid:#3D86E0;
+    --sky-bot:#2C66BE;
+    --ink:#FFFFFF;
+    --ink-2:rgba(255,255,255,.78);
+    --ink-3:rgba(255,255,255,.58);
+    --glass:rgba(255,255,255,.16);
+    --glass-2:rgba(255,255,255,.10);
+    --glass-line:rgba(255,255,255,.26);
+    --sun:#FFD56B;
+
+    /* ---- type scale ---- */
+    --t-hero:56px;   /* detail focal temp */
+    --t-temp:38px;   /* home current temp */
+    --t-row:18px;    /* saved-row temp   */
+    --t-day:15px;    /* forecast day temp*/
+    --t-city:15px;
+    --t-cap:12px;
+    --t-label:11px;
+
+    /* ---- canvas ---- */
+    --canvas:#e8edf3;
+    --canvas-ink:#1f2937;
+    --canvas-ink-2:#5b6675;
+    --panel:#ffffff;
+    --hair:#e2e8f0;
+    --accent:#2C66BE;
+  }
+
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    font-family:"Inter",system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #f3f6fa 0%, var(--canvas) 60%);
+    color:var(--canvas-ink);
+    -webkit-font-smoothing:antialiased;
+    padding:40px 24px 64px;
+  }
+
+  /* ===== header ===== */
+  .head{max-width:1360px;margin:0 auto 34px}
+  .eyebrow{
+    font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 10px
+  }
+  .head h1{
+    font-size:30px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px;color:var(--canvas-ink)
+  }
+  .head p{
+    margin:0;max-width:62ch;font-size:14.5px;line-height:1.55;color:var(--canvas-ink-2)
+  }
+
+  /* ===== board of phones ===== */
+  .board{
+    max-width:1360px;margin:0 auto;
+    display:flex;flex-wrap:wrap;gap:40px 48px;justify-content:center;align-items:flex-start
+  }
+  .frameblock{width:300px}
+  .frameblock__cap{
+    display:flex;align-items:baseline;gap:8px;margin:0 0 14px;padding-left:4px
+  }
+  .frameblock__num{
+    font-size:12px;font-weight:700;color:var(--accent);
+    width:22px;height:22px;border:1.5px solid var(--accent);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto
+  }
+  .frameblock__name{font-size:14px;font-weight:600;color:var(--canvas-ink)}
+  .frameblock__sub{font-size:12px;color:var(--canvas-ink-2)}
+
+  /* ---- phone shell ---- */
+  .phone{
+    width:300px;height:620px;border-radius:42px;padding:11px;
+    background:linear-gradient(160deg,#11151c,#272f3b);
+    box-shadow:0 30px 60px -24px rgba(20,40,80,.45), 0 6px 16px -8px rgba(0,0,0,.25);
+    animation:rise .7s cubic-bezier(.2,.7,.2,1) both
+  }
+  .frameblock:nth-child(2) .phone{animation-delay:.08s}
+  .frameblock:nth-child(3) .phone{animation-delay:.16s}
+  @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.phone{animation:none}}
+
+  .screen{
+    position:relative;width:100%;height:100%;border-radius:32px;overflow:hidden;
+    background:linear-gradient(178deg,var(--sky-top) 0%,var(--sky-mid) 52%,var(--sky-bot) 100%);
+    color:var(--ink);display:flex;flex-direction:column
+  }
+  .screen::after{ /* soft top glow */
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(120% 50% at 50% -8%, rgba(255,255,255,.22), transparent 60%)
+  }
+
+  /* ---- status bar ---- */
+  .status{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:14px 22px 4px;font-size:12px;font-weight:600;letter-spacing:.02em;z-index:2
+  }
+  .status .dots{display:flex;gap:5px;align-items:center}
+  .status .dots svg{display:block}
+
+  /* ---- generic frosted card ---- */
+  .card{
+    background:var(--glass);border:1px solid var(--glass-line);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-radius:22px
+  }
+
+  .body{flex:1;display:flex;flex-direction:column;padding:8px 18px 0;z-index:2;min-height:0}
+
+  /* ---- search ---- */
+  .search{
+    display:flex;align-items:center;gap:9px;height:42px;padding:0 14px;margin:8px 0 0;
+    border-radius:14px;background:var(--glass-2);border:1px solid var(--glass-line)
+  }
+  .search svg{flex:0 0 auto;opacity:.85}
+  .search span{font-size:13.5px;color:var(--ink-3)}
+
+  /* ---- weather glyph sizing ---- */
+  .wx{display:block}
+  .wx--xl{width:118px;height:118px}
+  .wx--lg{width:96px;height:96px}
+  .wx--sm{width:30px;height:30px}
+  .wx--xs{width:26px;height:26px}
+
+  /* ===== HOME current card ===== */
+  .current{
+    margin-top:auto;margin-bottom:auto;padding:26px 22px 24px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:2px
+  }
+  .current__city{font-size:var(--t-city);font-weight:600;letter-spacing:.01em}
+  .current__day{font-size:var(--t-cap);color:var(--ink-3);margin-bottom:6px}
+  .current__icon{margin:4px 0 2px}
+  .current__temp{font-size:var(--t-temp);font-weight:200;letter-spacing:-.01em;line-height:1}
+  .current__desc{font-size:13px;color:var(--ink-2);margin-top:2px;margin-bottom:16px}
+  .chips{display:flex;gap:10px}
+  .chip{
+    display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:14px;
+    background:var(--glass-2);border:1px solid var(--glass-line)
+  }
+  .chip svg{opacity:.9}
+  .chip b{font-size:13px;font-weight:600;line-height:1;white-space:nowrap}
+  .chip small{display:block;font-size:10px;color:var(--ink-3);margin-top:2px;font-weight:500}
+
+  /* ===== SAVED list ===== */
+  .h-title{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:12px 2px 14px}
+  .list{display:flex;flex-direction:column;gap:11px;overflow:hidden}
+  .row{
+    display:flex;align-items:center;gap:13px;padding:13px 15px;border-radius:18px;
+    background:var(--glass);border:1px solid var(--glass-line)
+  }
+  .row__txt{flex:1;min-width:0}
+  .row__city{font-size:14.5px;font-weight:600;line-height:1.15}
+  .row__cond{font-size:var(--t-cap);color:var(--ink-3)}
+  .row__temp{font-size:var(--t-row);font-weight:300}
+  .row__chev{opacity:.6;flex:0 0 auto}
+
+  /* ===== DETAIL ===== */
+  .nav{display:flex;align-items:center;gap:12px;padding:6px 2px 2px}
+  .nav__back{
+    width:34px;height:34px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    background:var(--glass-2);border:1px solid var(--glass-line)
+  }
+  .nav__city{font-size:16px;font-weight:600}
+  .det-current{display:flex;flex-direction:column;align-items:center;text-align:center;padding:14px 0 6px}
+  .det-current__temp{font-size:var(--t-hero);font-weight:200;line-height:1;letter-spacing:-.02em;margin-top:4px}
+  .det-current__desc{font-size:13.5px;color:var(--ink-2);margin-top:3px}
+  .det-meta{display:flex;justify-content:center;gap:9px;margin:14px 0 4px}
+  .forelabel{font-size:var(--t-label);font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:18px 4px 10px}
+  .strip{display:flex;gap:9px}
+  .day{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:13px 4px;
+    border-radius:16px;background:var(--glass-2);border:1px solid var(--glass-line)
+  }
+  .day.is-now{background:var(--glass);border-color:rgba(255,255,255,.4)}
+  .day__d{font-size:11px;font-weight:600;color:var(--ink-2)}
+  .day__hi{font-size:var(--t-day);font-weight:600;line-height:1}
+  .day__lo{font-size:12px;color:var(--ink-3);line-height:1}
+
+  /* ===== tab bar ===== */
+  .tabbar{
+    margin-top:auto;display:flex;padding:12px 30px calc(12px + env(safe-area-inset-bottom));
+    gap:34px;justify-content:center;z-index:2;
+    background:linear-gradient(0deg, rgba(20,50,100,.28), transparent)
+  }
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;opacity:.55}
+  .tab.is-active{opacity:1}
+  .tab span{font-size:10.5px;font-weight:600}
+  .home-pad,.det-pad{padding-bottom:16px}
+
+  /* ===== home topbar / gear ===== */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 2px}
+  .brand{font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .iconbtn{
+    width:36px;height:36px;border-radius:12px;padding:0;cursor:pointer;
+    background:var(--glass-2);border:1px solid var(--glass-line);
+    display:flex;align-items:center;justify-content:center
+  }
+
+  /* ===== settings ===== */
+  .set-list{display:flex;flex-direction:column;gap:16px;margin-top:8px}
+  .set-list .forelabel{margin:0 4px 9px}
+  .set-card{overflow:hidden}
+  .set-row{display:flex;align-items:center;gap:12px;padding:13px 15px}
+  .set-card .set-row + .set-row{border-top:1px solid rgba(255,255,255,.13)}
+  .set-row__txt{flex:1;min-width:0}
+  .set-row__label{font-size:14px;font-weight:500;line-height:1.2}
+  .set-row__cap{font-size:11.5px;color:var(--ink-3);margin-top:3px}
+  .set-end{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;gap:7px}
+  .set-val{font-size:13px;color:var(--ink-2);font-weight:500}
+  .set-chev{opacity:.55}
+  .set-foot{text-align:center;font-size:11.5px;color:var(--ink-3);margin-top:16px}
+
+  /* segmented control */
+  .seg{display:flex;gap:3px;padding:3px;border-radius:11px;background:var(--glass-2);border:1px solid var(--glass-line)}
+  .seg b{font-size:12px;font-weight:600;color:var(--ink-2);padding:5px 12px;border-radius:8px}
+  .seg b.on{background:#fff;color:var(--sky-mid)}
+
+  /* toggle switch */
+  .tgl{
+    width:46px;height:28px;border-radius:15px;padding:3px;display:flex;align-items:center;
+    background:var(--glass-2);border:1px solid var(--glass-line);justify-content:flex-start
+  }
+  .tgl i{width:22px;height:22px;border-radius:50%;background:#fff;display:block}
+  .tgl.on{background:rgba(255,255,255,.92);border-color:transparent;justify-content:flex-end}
+  .tgl.on i{background:var(--sky-mid)}
+
+  /* ===== spec panel ===== */
+  .spec{
+    max-width:1360px;margin:46px auto 0;background:var(--panel);border:1px solid var(--hair);
+    border-radius:20px;padding:26px 28px;
+    box-shadow:0 18px 40px -28px rgba(30,60,120,.35)
+  }
+  .spec h2{font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+  .spec__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:26px 34px}
+  .spec__col h3{font-size:13px;font-weight:700;margin:0 0 12px;color:var(--canvas-ink)}
+  .swatches{display:flex;flex-wrap:wrap;gap:8px}
+  .sw{display:flex;flex-direction:column;gap:5px;width:64px}
+  .sw i{height:38px;border-radius:9px;border:1px solid rgba(0,0,0,.06);display:block}
+  .sw b{font-size:10.5px;font-weight:600;color:var(--canvas-ink)}
+  .sw small{font-size:9.5px;color:var(--canvas-ink-2);font-family:ui-monospace,monospace}
+  .scale{display:flex;flex-direction:column;gap:9px}
+  .scale div{display:flex;align-items:baseline;gap:10px}
+  .scale .px{font-family:ui-monospace,monospace;font-size:11px;color:var(--canvas-ink-2);width:64px;flex:0 0 auto}
+  .scale .ex{color:var(--canvas-ink);line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .inv{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+  .inv li{font-size:12.5px;line-height:1.45;color:var(--canvas-ink-2)}
+  .inv b{color:var(--canvas-ink);font-weight:600}
+  .inv code{font-family:ui-monospace,monospace;font-size:11px;background:#f1f5f9;padding:1px 5px;border-radius:5px;color:#334155}
+
+  /* ===== expanded contract ===== */
+  .spec .lead{font-size:13px;line-height:1.55;color:var(--canvas-ink-2);max-width:78ch;margin:-8px 0 6px}
+  .part{border-top:1px solid var(--hair);margin-top:26px;padding-top:24px}
+  .part__head{display:flex;align-items:baseline;gap:10px;margin:0 0 16px;flex-wrap:wrap}
+  .part__n{font-family:ui-monospace,monospace;font-size:10.5px;font-weight:700;color:var(--accent);
+    border:1.5px solid var(--accent);border-radius:6px;padding:2px 7px;align-self:center}
+  .part__head h3{font-size:15px;font-weight:700;margin:0;color:var(--canvas-ink);letter-spacing:-.01em}
+  .part__head .sub{font-size:12px;color:var(--canvas-ink-2)}
+  .cols2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px 36px}
+  .tbl{width:100%;border-collapse:collapse;font-size:12.5px}
+  .tbl th{text-align:left;font-weight:600;color:var(--canvas-ink-2);font-size:10px;letter-spacing:.07em;
+    text-transform:uppercase;padding:0 14px 8px 0;border-bottom:1px solid var(--hair);white-space:nowrap}
+  .tbl td{padding:9px 14px 9px 0;border-bottom:1px solid #eef2f7;color:var(--canvas-ink);vertical-align:middle}
+  .tbl tr:last-child td{border-bottom:0}
+  .tbl .tk{font-family:ui-monospace,monospace;font-size:11.5px;color:#1e293b;font-weight:600;white-space:nowrap}
+  .mono{font-family:ui-monospace,monospace;font-size:11.5px;color:#334155;white-space:nowrap}
+  .dot{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:8px;
+    border:1px solid rgba(0,0,0,.12)}
+  .dot--glass{padding:1px;background:#3D86E0;border-color:rgba(0,0,0,.18)}
+  .dot--glass i{display:block;width:100%;height:100%;border-radius:3px}
+  .comps{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px 20px}
+  .comp{border:1px solid var(--hair);border-radius:12px;padding:13px 15px;background:#fbfcfe}
+  .comp h4{margin:0 0 5px;font-size:12.5px;font-weight:700;color:var(--canvas-ink)}
+  .comp p{margin:0;font-size:11.5px;line-height:1.5;color:var(--canvas-ink-2)}
+  .comp code,.endpt,.inv code{font-family:ui-monospace,monospace}
+  .comp code{font-size:10.5px;background:#eef2f7;padding:1px 5px;border-radius:5px;color:#334155}
+  .rules{display:flex;flex-wrap:wrap;gap:8px;margin-top:2px}
+  .rule{font-size:11.5px;color:#1e3a5f;background:#eef4fb;border:1px solid #d6e4f5;border-radius:8px;padding:5px 10px}
+  .rule b{font-weight:700;color:var(--accent)}
+  .glyphtile{width:34px;height:34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;
+    background:linear-gradient(160deg,#5AA9F5,#3D86E0)}
+  .glyphtile svg{width:21px;height:21px;display:block}
+  .endpt{font-size:11px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:7px;padding:9px 11px;
+    color:#334155;display:block;margin:7px 0;overflow-x:auto;white-space:pre;line-height:1.5}
+  .note{font-size:11.5px;color:var(--canvas-ink-2);line-height:1.5;margin:10px 0 0}
+  .note b{color:var(--canvas-ink)}
+  .states{display:flex;flex-direction:column;gap:11px}
+  .state{font-size:12px;color:var(--canvas-ink-2);line-height:1.5}
+  .state b{color:var(--canvas-ink);font-weight:600}
+</style>
+
+<!-- ===== reusable weather icons ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="ic-sun" viewBox="0 0 100 100">
+    <g fill="none" stroke="#FFD56B" stroke-width="6" stroke-linecap="round">
+      <line x1="50" y1="8"  x2="50" y2="20"/><line x1="50" y1="80" x2="50" y2="92"/>
+      <line x1="8" y1="50"  x2="20" y2="50"/><line x1="80" y1="50" x2="92" y2="50"/>
+      <line x1="20" y1="20" x2="29" y2="29"/><line x1="71" y1="71" x2="80" y2="80"/>
+      <line x1="80" y1="20" x2="71" y2="29"/><line x1="29" y1="71" x2="20" y2="80"/>
+    </g>
+    <circle cx="50" cy="50" r="20" fill="#FFD56B"/>
+  </symbol>
+  <symbol id="ic-cloud" viewBox="0 0 100 100">
+    <g fill="#FFFFFF">
+      <rect x="18" y="56" width="64" height="26" rx="13"/>
+      <circle cx="40" cy="52" r="19"/><circle cx="64" cy="46" r="23"/><circle cx="74" cy="58" r="16"/>
+    </g>
+  </symbol>
+  <symbol id="ic-partly" viewBox="0 0 100 100">
+    <g fill="none" stroke="#FFD56B" stroke-width="5" stroke-linecap="round">
+      <line x1="34" y1="8" x2="34" y2="17"/><line x1="9" y1="33" x2="18" y2="33"/>
+      <line x1="14" y1="14" x2="20" y2="20"/><line x1="54" y1="14" x2="48" y2="20"/>
+    </g>
+    <circle cx="34" cy="33" r="14" fill="#FFD56B"/>
+    <g fill="#FFFFFF">
+      <rect x="30" y="58" width="56" height="24" rx="12"/>
+      <circle cx="50" cy="54" r="17"/><circle cx="70" cy="49" r="20"/><circle cx="78" cy="59" r="14"/>
+    </g>
+  </symbol>
+  <symbol id="ic-rain" viewBox="0 0 100 100">
+    <g fill="#FFFFFF">
+      <rect x="20" y="44" width="60" height="24" rx="12"/>
+      <circle cx="40" cy="40" r="18"/><circle cx="62" cy="35" r="21"/><circle cx="72" cy="46" r="14"/>
+    </g>
+    <g fill="none" stroke="#BFD8FF" stroke-width="5" stroke-linecap="round">
+      <line x1="38" y1="76" x2="33" y2="88"/><line x1="52" y1="76" x2="47" y2="88"/><line x1="66" y1="76" x2="61" y2="88"/>
+    </g>
+  </symbol>
+  <symbol id="ic-bolt" viewBox="0 0 100 100">
+    <path fill="#FFFFFF" d="M56 8 L28 56 H46 L42 92 L74 40 H54 Z"/>
+  </symbol>
+  <symbol id="ic-snow" viewBox="0 0 100 100">
+    <g stroke="#FFFFFF" stroke-width="6" stroke-linecap="round">
+      <line x1="50" y1="12" x2="50" y2="88"/><line x1="18" y1="31" x2="82" y2="69"/><line x1="82" y1="31" x2="18" y2="69"/>
+    </g>
+  </symbol>
+</svg>
+
+<header class="head">
+  <p class="eyebrow">Design Contract · Weather (OpenWeather)</p>
+  <h1>The weather app — four screens</h1>
+</header>
+
+<main class="board">
+
+  <!-- ============ 1. HOME ============ -->
+  <div class="frameblock">
+    <div class="frameblock__cap">
+      <span class="frameblock__num">1</span>
+      <span class="frameblock__name">Home</span>
+      <span class="frameblock__sub">· search + current</span>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="dots">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="4.5" width="3" height="6.5" rx="1"/><rect x="9" y="2" width="3" height="9" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="1" width="17" height="9" rx="2.5" stroke="#fff" opacity=".5"/><rect x="2" y="2.5" width="13" height="6" rx="1.3" fill="#fff"/><rect x="18.5" y="3.5" width="2" height="4" rx="1" fill="#fff" opacity=".6"/></svg>
+        </span>
+      </div>
+      <div class="body home-pad">
+        <div class="topbar">
+          <span class="brand">Weather</span>
+          <button class="iconbtn" aria-label="Settings">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+          <span>Search city</span>
+        </div>
+
+        <div class="current">
+          <div class="current__city">Milan</div>
+          <div class="current__day">Today · 14:20</div>
+          <svg class="wx wx--xl current__icon"><use href="#ic-partly"/></svg>
+          <div class="current__temp">22°</div>
+          <div class="current__desc">Partly cloudy</div>
+          <div class="chips">
+            <div class="chip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><path d="M12 3s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11z"/></svg>
+              <div><b>64%</b><small>Humidity</small></div>
+            </div>
+            <div class="chip">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 9h11a3 3 0 1 0-3-3"/><path d="M3 15h14a3 3 0 1 1-3 3"/></svg>
+              <div><b>12 km/h</b><small>Wind</small></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="tabbar">
+        <div class="tab is-active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>
+          <span>Home</span>
+        </div>
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h12a1 1 0 0 1 1 1v15l-7-4-7 4V5a1 1 0 0 1 1-1z"/></svg>
+          <span>Saved</span>
+        </div>
+      </nav>
+    </div></div>
+  </div>
+
+  <!-- ============ 2. SAVED ============ -->
+  <div class="frameblock">
+    <div class="frameblock__cap">
+      <span class="frameblock__num">2</span>
+      <span class="frameblock__name">Saved Cities</span>
+      <span class="frameblock__sub">· list → tap</span>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="dots">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="4.5" width="3" height="6.5" rx="1"/><rect x="9" y="2" width="3" height="9" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="1" width="17" height="9" rx="2.5" stroke="#fff" opacity=".5"/><rect x="2" y="2.5" width="13" height="6" rx="1.3" fill="#fff"/><rect x="18.5" y="3.5" width="2" height="4" rx="1" fill="#fff" opacity=".6"/></svg>
+        </span>
+      </div>
+      <div class="body">
+        <h2 class="h-title">Saved Cities</h2>
+        <div class="list">
+          <div class="row">
+            <svg class="wx wx--sm"><use href="#ic-partly"/></svg>
+            <div class="row__txt"><div class="row__city">Milan</div><div class="row__cond">Partly cloudy</div></div>
+            <div class="row__temp">22°</div>
+            <svg class="row__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="row">
+            <svg class="wx wx--sm"><use href="#ic-rain"/></svg>
+            <div class="row__txt"><div class="row__city">London</div><div class="row__cond">Light rain</div></div>
+            <div class="row__temp">16°</div>
+            <svg class="row__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="row">
+            <svg class="wx wx--sm"><use href="#ic-sun"/></svg>
+            <div class="row__txt"><div class="row__city">Tokyo</div><div class="row__cond">Sunny</div></div>
+            <div class="row__temp">28°</div>
+            <svg class="row__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="row">
+            <svg class="wx wx--sm"><use href="#ic-cloud"/></svg>
+            <div class="row__txt"><div class="row__city">New York</div><div class="row__cond">Cloudy</div></div>
+            <div class="row__temp">19°</div>
+            <svg class="row__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+          <div class="row">
+            <svg class="wx wx--sm"><use href="#ic-sun"/></svg>
+            <div class="row__txt"><div class="row__city">Barcelona</div><div class="row__cond">Sunny</div></div>
+            <div class="row__temp">25°</div>
+            <svg class="row__chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <nav class="tabbar">
+        <div class="tab">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+          <span>Home</span>
+        </div>
+        <div class="tab is-active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+          <span>Saved</span>
+        </div>
+      </nav>
+    </div></div>
+  </div>
+
+  <!-- ============ 3. DETAIL ============ -->
+  <div class="frameblock">
+    <div class="frameblock__cap">
+      <span class="frameblock__num">3</span>
+      <span class="frameblock__name">Detail + Forecast</span>
+      <span class="frameblock__sub">· back nav</span>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="dots">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="4.5" width="3" height="6.5" rx="1"/><rect x="9" y="2" width="3" height="9" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="1" width="17" height="9" rx="2.5" stroke="#fff" opacity=".5"/><rect x="2" y="2.5" width="13" height="6" rx="1.3" fill="#fff"/><rect x="18.5" y="3.5" width="2" height="4" rx="1" fill="#fff" opacity=".6"/></svg>
+        </span>
+      </div>
+      <div class="body det-pad">
+        <div class="nav">
+          <div class="nav__back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </div>
+          <div class="nav__city">Milan</div>
+        </div>
+
+        <div class="det-current">
+          <svg class="wx wx--lg"><use href="#ic-partly"/></svg>
+          <div class="det-current__temp">22°</div>
+          <div class="det-current__desc">Partly cloudy · feels like 23°</div>
+          <div class="det-meta">
+            <div class="chip">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff"><path d="M12 3s6 6.5 6 11a6 6 0 1 1-12 0c0-4.5 6-11 6-11z"/></svg>
+              <div><b>64%</b><small>Humidity</small></div>
+            </div>
+            <div class="chip">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M3 9h11a3 3 0 1 0-3-3"/><path d="M3 15h14a3 3 0 1 1-3 3"/></svg>
+              <div><b>12 km/h</b><small>Wind</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="forelabel">Next 5 days</div>
+        <div class="strip">
+          <div class="day is-now"><div class="day__d">Today</div><svg class="wx wx--xs"><use href="#ic-partly"/></svg><div class="day__hi">22°</div><div class="day__lo">15°</div></div>
+          <div class="day"><div class="day__d">Tue</div><svg class="wx wx--xs"><use href="#ic-rain"/></svg><div class="day__hi">21°</div><div class="day__lo">14°</div></div>
+          <div class="day"><div class="day__d">Wed</div><svg class="wx wx--xs"><use href="#ic-sun"/></svg><div class="day__hi">24°</div><div class="day__lo">16°</div></div>
+          <div class="day"><div class="day__d">Thu</div><svg class="wx wx--xs"><use href="#ic-sun"/></svg><div class="day__hi">26°</div><div class="day__lo">17°</div></div>
+          <div class="day"><div class="day__d">Fri</div><svg class="wx wx--xs"><use href="#ic-cloud"/></svg><div class="day__hi">23°</div><div class="day__lo">15°</div></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+  <!-- ============ 4. SETTINGS ============ -->
+  <div class="frameblock">
+    <div class="frameblock__cap">
+      <span class="frameblock__num">4</span>
+      <span class="frameblock__name">Settings</span>
+      <span class="frameblock__sub">· units + privacy</span>
+    </div>
+    <div class="phone"><div class="screen">
+      <div class="status">
+        <span>9:41</span>
+        <span class="dots">
+          <svg width="17" height="11" viewBox="0 0 17 11" fill="#fff"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="4.5" width="3" height="6.5" rx="1"/><rect x="9" y="2" width="3" height="9" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></svg>
+          <svg width="22" height="11" viewBox="0 0 22 11" fill="none"><rect x="0.5" y="1" width="17" height="9" rx="2.5" stroke="#fff" opacity=".5"/><rect x="2" y="2.5" width="13" height="6" rx="1.3" fill="#fff"/><rect x="18.5" y="3.5" width="2" height="4" rx="1" fill="#fff" opacity=".6"/></svg>
+        </span>
+      </div>
+      <div class="body det-pad">
+        <div class="nav">
+          <div class="nav__back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+          </div>
+          <div class="nav__city">Settings</div>
+        </div>
+
+        <div class="set-list">
+
+          <div>
+            <div class="forelabel">Units</div>
+            <div class="card set-card">
+              <div class="set-row">
+                <div class="set-row__txt"><div class="set-row__label">Temperature</div></div>
+                <div class="seg"><b class="on">°C</b><b>°F</b></div>
+              </div>
+              <div class="set-row">
+                <div class="set-row__txt"><div class="set-row__label">Wind speed</div></div>
+                <div class="seg"><b class="on">km/h</b><b>mph</b></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="forelabel">Notifications</div>
+            <div class="card set-card">
+              <div class="set-row">
+                <div class="set-row__txt">
+                  <div class="set-row__label">Daily reminder</div>
+                  <div class="set-row__cap">One forecast each morning</div>
+                </div>
+                <div class="tgl on"><i></i></div>
+              </div>
+              <div class="set-row">
+                <div class="set-row__txt"><div class="set-row__label">Time</div></div>
+                <div class="set-end">
+                  <span class="set-val">08:00</span>
+                  <svg class="set-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="forelabel">Privacy &amp; data</div>
+            <div class="card set-card">
+              <div class="set-row">
+                <div class="set-row__txt">
+                  <div class="set-row__label">Use my location</div>
+                  <div class="set-row__cap">Local weather on launch</div>
+                </div>
+                <div class="tgl on"><i></i></div>
+              </div>
+              <div class="set-row">
+                <div class="set-row__txt"><div class="set-row__label">Weather data</div></div>
+                <div class="set-end">
+                  <span class="set-val">OpenWeather</span>
+                  <svg class="set-chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="set-foot">Weather · v1.0.0</div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+
+</main>
+
+<!-- ===== design contract ===== -->
+<section class="spec">
+  <h2>The contract — build to this, exactly</h2>
+  <p class="lead">The mockups above show the design assembled. The spec below is the source of truth: every colour, size, radius, and layout rule your project must match. Each component maps 1:1 to a widget.</p>
+
+  <!-- app -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§1</span><h3>What the app is</h3></div>
+    <p class="note" style="margin:0;font-size:12.5px;max-width:78ch">A small weather app on a blue “sky” background with frosted-glass cards. Four screens: <b>Home</b>, <b>Saved Cities</b>, <b>Detail + Forecast</b>, <b>Settings</b>. Data comes from the OpenWeather API. The visual language is calm, airy, single-accent. The design does not change as the app grows — only the behaviour behind it.</p>
+  </div>
+
+  <!-- frame -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§2</span><h3>Frame &amp; units</h3><span class="sub">the canvas everything sits in</span></div>
+    <div class="rules">
+      <span class="rule">Device <b>iPhone 17</b> · frame <b>402 × 874 pt</b></span>
+      <span class="rule">Status bar <b>54</b></span>
+      <span class="rule">Safe area top <b>62</b> / bottom <b>34</b></span>
+      <span class="rule">1 pt = <b>1 logical px</b> → numbers used verbatim in code</span>
+      <span class="rule">Responsive (Column/Row + Expanded), <b>not pixel-pinned</b>; 402 is the reference width</span>
+      <span class="rule">Wrap every screen in <b>SafeArea</b></span>
+    </div>
+  </div>
+
+  <!-- color + type -->
+  <div class="part">
+    <div class="cols2">
+      <div>
+        <div class="part__head"><span class="part__n">§3</span><h3>Colour tokens</h3></div>
+        <table class="tbl">
+          <thead><tr><th>Token</th><th>Value</th><th>Use</th></tr></thead>
+          <tbody>
+            <tr><td><span class="dot" style="background:#5AA9F5"></span><span class="tk">sky.top</span></td><td class="mono">#5AA9F5</td><td>gradient 0%</td></tr>
+            <tr><td><span class="dot" style="background:#3D86E0"></span><span class="tk">sky.mid</span></td><td class="mono">#3D86E0</td><td>gradient 52%</td></tr>
+            <tr><td><span class="dot" style="background:#2C66BE"></span><span class="tk">sky.bottom</span></td><td class="mono">#2C66BE</td><td>gradient 100%</td></tr>
+            <tr><td><span class="dot" style="background:#FFD56B"></span><span class="tk">sun</span></td><td class="mono">#FFD56B</td><td>clear icon · active heart · selected segment</td></tr>
+            <tr><td><span class="dot" style="background:#fff"></span><span class="tk">ink</span></td><td class="mono">#FFFFFF</td><td>primary text &amp; icons</td></tr>
+            <tr><td><span class="dot dot--glass"><i style="background:rgba(255,255,255,.58)"></i></span><span class="tk">ink.secondary</span></td><td class="mono">white 58%</td><td>captions · secondary labels</td></tr>
+            <tr><td><span class="dot dot--glass"><i style="background:rgba(255,255,255,.50)"></i></span><span class="tk">ink.hint</span></td><td class="mono">white 50%</td><td>input hints</td></tr>
+            <tr><td><span class="dot dot--glass"><i style="background:rgba(255,255,255,.16)"></i></span><span class="tk">glass.fill</span></td><td class="mono">white 16%</td><td>card fill (chips 10%)</td></tr>
+            <tr><td><span class="dot dot--glass"><i style="background:rgba(255,255,255,.26)"></i></span><span class="tk">glass.stroke</span></td><td class="mono">white 26%</td><td>card border</td></tr>
+          </tbody>
+        </table>
+        <p class="note">Background = vertical <b>LinearGradient(top→bottom)</b> through the three sky stops. Body / description text uses <b>ink @ 78%</b>.</p>
+      </div>
+      <div>
+        <div class="part__head"><span class="part__n">§4</span><h3>Typography</h3><span class="sub">Inter (system fallback OK)</span></div>
+        <table class="tbl">
+          <thead><tr><th>Style</th><th>Size</th><th>Wt</th><th>Colour</th></tr></thead>
+          <tbody>
+            <tr><td>Hero temp · Detail</td><td class="mono">56</td><td class="mono">200</td><td>ink · height 1</td></tr>
+            <tr><td>Temp · Home</td><td class="mono">38</td><td class="mono">200</td><td>ink · height 1</td></tr>
+            <tr><td>Saved title</td><td class="mono">21</td><td class="mono">600</td><td>ink</td></tr>
+            <tr><td>Screen title</td><td class="mono">16</td><td class="mono">600</td><td>ink</td></tr>
+            <tr><td>City name</td><td class="mono">15</td><td class="mono">600</td><td>ink</td></tr>
+            <tr><td>Chip value</td><td class="mono">13</td><td class="mono">600</td><td>ink</td></tr>
+            <tr><td>Body / description</td><td class="mono">13</td><td class="mono">400</td><td>ink 78%</td></tr>
+            <tr><td>Caption</td><td class="mono">12</td><td class="mono">400</td><td>ink.secondary</td></tr>
+            <tr><td>Section label</td><td class="mono">11</td><td class="mono">600</td><td>secondary · UPPER · tracking ~1.1</td></tr>
+            <tr><td>Chip label</td><td class="mono">10</td><td class="mono">400</td><td>ink.secondary</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- spacing -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§5</span><h3>Spacing, grid &amp; radii</h3></div>
+    <div class="rules">
+      <span class="rule"><b>4-pt</b> spacing grid</span>
+      <span class="rule">Screen padding <b>20</b></span>
+      <span class="rule">Card inner padding <b>20</b> (chips / segments tighter, per component)</span>
+      <span class="rule">Backdrop blur <b>14</b></span>
+    </div>
+    <div class="rules" style="margin-top:10px">
+      <span class="rule">radius — GlassCard <b>22</b></span>
+      <span class="rule">CityRow <b>18</b></span>
+      <span class="rule">DayCard <b>16</b></span>
+      <span class="rule">chip · search <b>14</b></span>
+      <span class="rule">icon / back button <b>12</b></span>
+      <span class="rule">segment pill <b>11</b></span>
+      <span class="rule">segment option <b>8</b></span>
+    </div>
+  </div>
+
+  <!-- components -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§6</span><h3>Components</h3><span class="sub">each = one widget you build</span></div>
+    <div class="comps">
+      <div class="comp"><h4>GlassCard</h4><p>Frosted container: <code>ClipRRect</code> + backdrop blur 14 + <code>Container</code> fill <code>glass.fill</code>, border <code>glass.stroke</code>. Defaults radius 22, padding 20. Variants override radius/fill (chips: radius 14, fill 10%).</p></div>
+      <div class="comp"><h4>SearchField</h4><p>GlassCard (radius 14, fill 10%, padding h14): search icon (18, white 85%) + text input. Placeholder “Search city” (<code>ink.hint</code>). Submit runs a search.</p></div>
+      <div class="comp"><h4>WeatherIcon</h4><p>Maps a condition to a glyph (see §8). Clear → <code>sun</code> colour; all others → white.</p></div>
+      <div class="comp"><h4>InfoChip</h4><p>GlassCard (radius 14, fill 10%, padding h13 v9): Row[ icon 16 (white 90%) · gap 7 · Column(value, label) ]. Used for Humidity and Wind.</p></div>
+      <div class="comp"><h4>WeatherCard · Home</h4><p>Centred Column: city (15/600) + save heart (18; filled &amp; <code>sun</code> when saved, outline white 80% when not) · gap 8 · WeatherIcon 96 · temp (38/200) · description (13, white 78%) · gap 16 · Row[ humidity chip · gap 10 · wind chip ].</p></div>
+      <div class="comp"><h4>CityRow · Saved</h4><p>GlassCard (radius 18, padding h15 v13): Row[ WeatherIcon 30 · gap 13 · Expanded Column(city 15/600, description 12 secondary) · temp 18/300 · gap 6 · chevron white 58% ]. Whole row tappable → Detail.</p></div>
+      <div class="comp"><h4>DayCard · Detail strip</h4><p><code>Expanded</code> GlassCard (radius 16, fill 16% if today else 10%, padding v13 h4): Column(weekday or “Today” 11/600 white 78% · glyph 26 · max 15/600 · min 12 secondary).</p></div>
+      <div class="comp"><h4>TabBar</h4><p>Centred Row of two items (icon 22 + label 11/600). Active = full opacity; inactive = 55%. Sits in the bottom safe area.</p></div>
+      <div class="comp"><h4>Segmented · Settings</h4><p>Pill padded 3, fill 10%, stroke, radius 11. Option padded h12 v5, radius 8; selected = white fill + <code>sky.mid</code> text; unselected = white 78%.</p></div>
+      <div class="comp"><h4>Toggle · Settings</h4><p>46×28 pill. ON: white track 92%, knob <code>sky.mid</code>. OFF: track white 10% + stroke, knob white. Animate ~160 ms.</p></div>
+      <div class="comp"><h4>BackButton</h4><p>34×34 glass square (radius 12, fill 10%, stroke) with a chevron-left.</p></div>
+    </div>
+  </div>
+
+  <!-- screens -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§7</span><h3>Screens</h3><span class="sub">layout, top to bottom</span></div>
+    <div class="cols2">
+      <div class="spec__col"><h3>1 · Home</h3>
+        <ul class="inv">
+          <li><b>Top bar</b> — Row space-between: title “Weather” (16/600) · gear in 34×34 glass square → push Settings</li>
+          <li><b>gap 12</b> → SearchField</li>
+          <li><b>Spacer</b> → WeatherCard (centred) → Spacer</li>
+          <li><b>TabBar</b> — Home active</li>
+        </ul>
+      </div>
+      <div class="spec__col"><h3>2 · Saved Cities</h3>
+        <ul class="inv">
+          <li><b>Title</b> — “Saved Cities” (21/600)</li>
+          <li><b>List</b> — scrolling CityRows, gap 11; tap → Detail</li>
+          <li><b>Empty state</b> — centred two-line white 70%: “No saved cities yet. / Save one from Home.”</li>
+        </ul>
+      </div>
+      <div class="spec__col"><h3>3 · Detail + Forecast</h3>
+        <ul class="inv">
+          <li><b>Nav</b> — BackButton + city (16/600)</li>
+          <li><b>gap 8</b> → <b>Hero</b> — icon 96 · temp 56/200 · “desc · feels like X°” (13, white 78%) · gap 14 · Row[ humidity chip · gap 9 · wind chip ]</li>
+          <li><b>gap 22</b> → section label “NEXT 5 DAYS”</li>
+          <li><b>gap 10</b> → <b>Strip</b> — 5 DayCards (Expanded, gap 9); first = today, highlighted</li>
+        </ul>
+      </div>
+      <div class="spec__col"><h3>4 · Settings</h3>
+        <ul class="inv">
+          <li><b>Structure</b> — reached from the Home gear; BackButton returns. Sections = section label + GlassCard of rows split by hairline dividers (white 13%). Row (padding h15 v13) = label 14/500 [+ caption 11 secondary] left, trailing control right</li>
+          <li><b>Units</b> — Temperature °C/°F (drives the whole app) · Wind km/h/mph</li>
+          <li><b>Notifications</b> — Daily reminder toggle (caption “One forecast each morning”) · Time 08:00 + chevron (opens a time picker) · Send test notification (bell, fires immediately). Reminder text names the followed city — “The forecasts for &lt;city&gt; are ready!” (city name only; a scheduled local notification can’t fetch live weather at fire time)</li>
+          <li><b>Privacy &amp; data</b> — Use my location toggle (caption “Local weather on launch”; the permission prompt appears only when the toggle is first enabled, never at launch; ON = default source: local weather on launch, using already-granted location without prompting, falling back to the default city; OFF = default city) · Weather data “OpenWeather” + chevron</li>
+          <li><b>Footer</b> — “Weather · v1.0.0” (11, white 55%)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- mapping -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§8</span><h3>Weather-icon mapping</h3><span class="sub">OpenWeather <code>weather[0].main</code> → glyph</span></div>
+    <table class="tbl" style="max-width:520px">
+      <thead><tr><th>Condition</th><th>Glyph</th><th>Colour</th></tr></thead>
+      <tbody>
+        <tr><td>Clear</td><td><span class="glyphtile"><svg><use href="#ic-sun"/></svg></span></td><td><span class="dot" style="background:#FFD56B"></span>sun</td></tr>
+        <tr><td>Clouds</td><td><span class="glyphtile"><svg><use href="#ic-cloud"/></svg></span></td><td><span class="dot" style="background:#fff"></span>white</td></tr>
+        <tr><td>Rain / Drizzle</td><td><span class="glyphtile"><svg><use href="#ic-rain"/></svg></span></td><td><span class="dot" style="background:#fff"></span>white</td></tr>
+        <tr><td>Thunderstorm</td><td><span class="glyphtile"><svg><use href="#ic-bolt"/></svg></span></td><td><span class="dot" style="background:#fff"></span>white</td></tr>
+        <tr><td>Snow</td><td><span class="glyphtile"><svg><use href="#ic-snow"/></svg></span></td><td><span class="dot" style="background:#fff"></span>white</td></tr>
+        <tr><td>(other)</td><td><span class="glyphtile"><svg><use href="#ic-cloud"/></svg></span></td><td><span class="dot" style="background:#fff"></span>white</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Material icons are fine. Optional exercise: swap to OpenWeather’s network PNGs at <code>https://openweathermap.org/img/wn/{code}@2x.png</code>.</p>
+  </div>
+
+  <!-- states + data -->
+  <div class="part">
+    <div class="cols2">
+      <div>
+        <div class="part__head"><span class="part__n">§9</span><h3>States</h3></div>
+        <div class="states">
+          <div class="state"><b>Loading</b> — centred white spinner.</div>
+          <div class="state"><b>Error</b> — centred short message (e.g. <code style="font-family:ui-monospace,monospace">City “X” not found</code>); no stack traces.</div>
+          <div class="state"><b>Empty</b> (Saved) — the friendly two-line prompt.</div>
+        </div>
+      </div>
+      <div>
+        <div class="part__head"><span class="part__n">§10</span><h3>Data source — OpenWeather</h3></div>
+        <span class="endpt">GET /data/2.5/weather?q={city}&amp;units=metric&amp;appid={key}</span>
+        <p class="note">Read <code style="font-family:ui-monospace,monospace">name · main.temp · main.feels_like · main.humidity · weather[0].main · weather[0].description · wind.speed</code> (m/s × 3.6 = km/h). For location, use <code style="font-family:ui-monospace,monospace">&amp;lat=&amp;lon=</code> instead of <code style="font-family:ui-monospace,monospace">q</code>.</p>
+        <span class="endpt">GET /data/2.5/forecast?q={city}&amp;units=metric&amp;appid={key}</span>
+        <p class="note">3-hourly list → aggregate into 5 days (min/max + midday condition). All fetched <b>metric (°C)</b>; the °C/°F toggle converts <b>at display time</b> (no refetch). Throw on non-200 → error state. Key stays a placeholder <code style="font-family:ui-monospace,monospace">YOUR_OPENWEATHER_API_KEY</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- units -->
+  <div class="part">
+    <div class="part__head"><span class="part__n">§11</span><h3>App-wide units</h3><span class="sub">one setting, every temperature</span></div>
+    <p class="note" style="margin:0;font-size:12.5px;max-width:78ch">Store temperatures in °C. A single <code style="font-family:ui-monospace,monospace">formatTemp(context, celsius)</code> reads the settings state and returns °C or °F. Every temperature widget (WeatherCard, CityRow, DayCard, Detail hero) calls it, so flipping the unit in Settings rebuilds all temperatures at once.</p>
+  </div>
+
+</section>

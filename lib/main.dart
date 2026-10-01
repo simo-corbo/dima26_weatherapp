@@ -1,16 +1,41 @@
+import 'package:dima26_weatherapp/design_tokens.dart';
 import 'package:flutter/material.dart';
+import 'dart:ui';
 
-void main() {
-  runApp(const MainApp());
-}
+void main () => runApp(const WeatherApp());
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+// equivalent to 
+
+//void main(){
+//  runApp(const WeatherApp()); 
+//}
+
+class WeatherApp extends StatelessWidget{
+  const WeatherApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: Scaffold(body: Center(child: Text('Hello World!'))),
+  Widget build (BuildContext context){
+    return MaterialApp(
+      title: 'Weather',
+      debugShowCheckedModeBanner: false,
+      home: const HomeScreen(),
+      theme: ThemeData(
+        fontFamily: 'Inter',
+        useMaterial3: true
+      )
+    );
+  }
+}
+
+class HomeScreen extends StatelessWidget{
+  const HomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      body: Container(
+
+      )
     );
   }
 }

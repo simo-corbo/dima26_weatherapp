@@ -27,18 +27,32 @@ class WeatherApp extends StatelessWidget{
   }
 }
 
-class HomeScreen extends StatefulWidget{
+// here we introduce the stateful widget, because the HomeScreen has a state: the city and the saved cities.
+class HomeScreen extends StatefulWidget{ 
   const HomeScreen({super.key});
 
+
+  // the stateful widget is split in two classes: the widget itself, and the state. The state is where the mutable data is stored.
+  // the only mandatory method of the stateful widget is createState(), which returns the state object. 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
+
+
+  // build was here
 }
 
+// this is the state of the HomeScreen. It is a private class (the underscore at the beginning of the name makes it private).
+// it is a subclass of State<HomeScreen>, which means it is the state of the HomeScreen widget.
 class _HomeScreenState extends State<HomeScreen>{
+
+  // here we consider the tab index of the bottom bar
   int _tab = 0;                         // 0 = Home, 1 = Saved
+
+  // default city is London
   String _city = 'London';              // the city shown on Home
   final Set<String> _savedCities = {};  // the cities with the heart
 
+  // toggles the heart of a city: if it was saved, it is removed; if it was not saved, it is added.
   void _toggleSaved(String city) {
     setState(() {
       if (!_savedCities.add(city)) {
@@ -52,6 +66,7 @@ class _HomeScreenState extends State<HomeScreen>{
   // It gives back the chosen city, or null if the user just went back.
   Future<void> _pickCity() async {
     final city = await Navigator.of(context).push<String>(
+      // when we create a new screen we use MaterialPageRoute
       MaterialPageRoute(builder: (context) => const CityPickerScreen()),
     );
     if (city == null || city.isEmpty) return; // back without choosing, or empty text
@@ -61,12 +76,15 @@ class _HomeScreenState extends State<HomeScreen>{
   // Opens the detail screen of a city: the data goes in the constructor.
   void _openCity(String city) {
     Navigator.of(context).push(
+      // when we create a new CityDetailScreen we pass the city in the constructor
+      // CityDetailScreen is a stateless widget (it doesn't have a state, it just shows the data passed in the constructor)
       MaterialPageRoute(builder: (context) => CityDetailScreen(city: city)),
     );
   }
 
   @override
   Widget build(BuildContext context){
+    // same as before
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -86,8 +104,24 @@ class _HomeScreenState extends State<HomeScreen>{
                   ],
                 ),
                 SizedBox(height: 12),
+                // the search field is a custom widget, which is a GestureDetector that calls _pickCity() when tapped
+                // notice that we pass the function itself, not the result of calling it (no parentheses)
+
+                // so writing SearchField(onTap: _pickCity()) would be WRONG!!!!!
                 SearchField(onTap: _pickCity),
+                // now we use Expanded for the main content.
+                // it means that the content will take all the remaining space
                 Expanded(
+
+                  // here we use the ternary operator to choose what to show based on the tab index
+                  // condition ? case_true : case_false
+                  // it is equivalent to:
+                  // if (_tab == 0) {
+                  //   return Center(child: WeatherCard(...));
+                  // } else {
+                  //   return ListView(...);
+                  // }
+
                   child: _tab == 0
                       // Home tab: the weather card, in the middle
                       ? Center(
@@ -113,8 +147,21 @@ class _HomeScreenState extends State<HomeScreen>{
                           ],
                         ),
                 ),
+                // bottom tab bar now has a onTap function
+                // this syntax means that the argument that is passed onto the function (index) is used then to set the state, in particular by
+                // setting _tab to index
                 BottomTabBar(
                   activeIndex: _tab,
+
+                  
+                  // this is a shorthand for:
+                  // onTap: (index) {
+                  //   setState(() {
+                  //     _tab = index;
+                  //   });
+                  // }
+                  // it waits for the value returned by the function onTap(index)
+                  // (index) is the argument passed to the function, which is the index of the tab that was tapped
                   onTap: (index) => setState(() => _tab = index),
                 )
               ],)
@@ -125,6 +172,7 @@ class _HomeScreenState extends State<HomeScreen>{
   }
 }
 
+// unchanged
 class GlassCard extends StatelessWidget {
   final double radius;
   final Color? fill;
@@ -160,7 +208,7 @@ class GlassCard extends StatelessWidget {
     );
   }
 }
-
+// unchanged
 class InfoChip extends StatelessWidget{
   final IconData icon;
   final String value;
@@ -187,6 +235,7 @@ class InfoChip extends StatelessWidget{
   }
 } 
 
+// unchanged
 class WeatherIcon extends StatelessWidget{
   final double size;
   final String condition;
@@ -228,7 +277,15 @@ class WeatherCard extends StatelessWidget{
   final int humidity;
   final int windKmh;
   final bool saved;
-  final VoidCallback? onToggleSave; // called when the heart is tapped
+
+  // added now: this is the function called when the heart icon is tapped, and handles the saving of the city
+  // the ? tells us that it can be null
+  // when we declare it in the home page we pass it with _toggleSaved, which in turn changes the state of the homepage and therefore it updates the screen
+  // adding the saved cities to the set of saved cities
+  // when the widget is built, it checks if the city is in the set of saved cities and shows the heart accordingly
+
+  final VoidCallback? onToggleSave; 
+  // void function() 
 
   const WeatherCard({super.key, required this.city, required this.condition, required this.temp, required this.description, required this.humidity, required this.windKmh, required this.saved, this.onToggleSave});
 
@@ -242,10 +299,18 @@ class WeatherCard extends StatelessWidget{
           children: [
             Text(city, style: AppText.cityName),
             const SizedBox(width: 8),
+            // the GestureDetector is a widget that detects gestures, in this case a tap
             GestureDetector(
+              // onToggleSave is the parameter passed in the constructor, which is a function that handles the saving of the city
+              // when we instantiate the WeatherCard in the HomeScreen, we pass _toggleSaved
+              // 
               onTap: onToggleSave,
               child: Icon(
+                // saved is a boolean, passed in the constructor and it is COMPUTED
+                // saved is true if the city is in the set of saved cities, false otherwise
+                // saved: _savedCities.contains(_city),
                 saved ? Icons.favorite : Icons.favorite_border,
+                // if(saved == true) then Icons.favorite else Icons.favorite_border
                 size: 18,
                 color: saved ? AppColors.sun : Colors.white.withValues(alpha: 0.80),
               ),
@@ -280,20 +345,26 @@ class SearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // the GestureDetector is a widget that detects gestures, in this case a tap
     return GestureDetector(
+      // onTap is the parameter passed in the constructor, which is a function that handles the tap
+      // when we instantiate the SearchField in the HomeScreen, we pass _pickCity
+      // onTap: _pickCity
+      // notice that we pass the function itself, not the result of calling it (no parentheses)
+      // pickCity is a function that opens the CityPickerScreen and waits for the result, which is the city chosen by the user
       onTap: onTap,
       child: GlassCard(
-      radius: 14,
-      fill: AppColors.chipFill,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      child: Row(
-        children: [
-          Icon(Icons.search, size: 18, color: Colors.white.withValues(alpha: 0.85)),
-          const SizedBox(width: 10),
-          Text('Search city', style: AppText.searchHint),
-        ],
+        radius: 14,
+        fill: AppColors.chipFill,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Icon(Icons.search, size: 18, color: Colors.white.withValues(alpha: 0.85)),
+            const SizedBox(width: 10),
+            Text('Search city', style: AppText.searchHint),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -311,6 +382,10 @@ class _TabItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      // onTap is the parameter passed in the constructor, which is a function that handles the tap
+      // when we instantiate the _TabItem in the BottomTabBar, we pass a function that sets the state of the HomeScreen to the index of the tab
+      // in this case the function is () => onTap(0) for the first tab, and () => onTap(1) for the second tab
+      // the value in the parentheses is the value that is returned to the awaiting function in the HomeScreen
       onTap: onTap,
       child: Opacity(
       opacity: active ? 1.0 : 0.55, // active = full, inactive = 55%
@@ -331,6 +406,7 @@ class _TabItem extends StatelessWidget {
 class BottomTabBar extends StatelessWidget {
   final int activeIndex; // which tab is active (from 0 to numOfTabs-1)
   final ValueChanged<int> onTap; // called with the index of the tapped tab
+  // equivalent to: final void Function(int) onTap;
   const BottomTabBar({super.key, this.activeIndex = 0, required this.onTap});
 
   @override
@@ -340,6 +416,9 @@ class BottomTabBar extends StatelessWidget {
       children: [
         _TabItem(
             icon: Icons.home_rounded, label: 'Home', active: activeIndex == 0,
+
+            // onTap changes the state of the HomeScreen to the index of the tab, which is 0 for the first tab
+            // onTap(0) returns the value 0 to the awaiting function in the HomeScreen, which sets the state of the HomeScreen to 0
             onTap: () => onTap(0)),
         const SizedBox(width: 48),
         _TabItem(
@@ -350,6 +429,7 @@ class BottomTabBar extends StatelessWidget {
   }
 }
 
+// unchanged
 /// A reusable 34×34 glass square for the top-bar icon buttons (in the home this is the settings button)
 class GlassIconButton extends StatelessWidget {
   final IconData icon;
@@ -371,7 +451,7 @@ class GlassIconButton extends StatelessWidget {
 }
 
 /// The cities the picker offers.
-const cities = ['London', 'Bergamo', 'Milano', 'Oslo', 'New York'];
+const cities = ['Bergamo', 'Milano', 'London', 'Beijing', 'Oslo', 'New York', 'Wonderland'];
 
 /// A pushed screen: shows the cities and gives back the one you tap,
 /// or the one you type in the text box at the bottom.
@@ -395,6 +475,7 @@ class CityPickerScreen extends StatelessWidget {
             Expanded(
               child: ListView(
                 children: [
+                  // a list of all the predefined cities
                   for (final city in cities)
                     ListTile(
                       title: Text(city, style: AppText.cityName),
@@ -412,7 +493,7 @@ class CityPickerScreen extends StatelessWidget {
                   hintText: 'Or type a city',
                   hintStyle: AppText.searchHint,
                 ),
-                // called when the user presses enter on the keyboard
+                // called when the user presses enter on the keyboard 
                 onSubmitted: (text) => Navigator.of(context).pop(text), // gives back the typed city
               ),
             ),

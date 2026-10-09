@@ -56,4 +56,14 @@ class AppText {
       TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.inkHint);
   static const tabLabel =
       TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.ink);
+
+  // Lab 3: bigger styles for the redesigned screens
+  static const bigTitle =
+      TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: AppColors.ink);
+  static const bigTemp = TextStyle(
+      fontSize: 72, fontWeight: FontWeight.w200, color: AppColors.ink, height: 1);
+  static const bigCity =
+      TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: AppColors.ink);
+  static final hint =
+      TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: AppColors.body78, height: 1.4);
 }

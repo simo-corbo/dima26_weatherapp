@@ -1,4 +1,5 @@
 import 'package:dima26_weatherapp/design_tokens.dart';
+import 'package:dima26_weatherapp/weather_api.dart'; // LAB 3: the REST API (Weather, WeatherService)
 import 'package:flutter/material.dart';
 import 'dart:ui';
 
@@ -52,6 +53,24 @@ class _HomeScreenState extends State<HomeScreen>{
   String _city = 'London';              // the city shown on Home
   final Set<String> _savedCities = {};  // the cities with the heart
 
+  // the units. They live here, in HomeScreen, because different widgets need them:
+  // the settings screen changes them, the weather cards show them.
+  // They are not parent and child, so the state goes up to their common parent (state hoisting)
+  bool _celsius = true;  // true = °C, false = °F
+  bool _kmh = true;      // true = km/h, false = mph
+
+  // the API. One service, and the Futures we already asked for, one per city.
+  // Why keep them? build runs many times (every setState, every rotation): if build called
+  // fetchCurrent, every rebuild would send a new request. So we ask once, and keep the Future.
+  final _service = WeatherService();
+  final Map<String, Future<Weather>> _current = {};
+  final Map<String, Future<List<DayForecast>>> _forecasts = {};
+
+  // putIfAbsent: if the city is already in the map, gives back its Future;
+  // if not, calls the function (the request), stores the Future, and gives it back.
+  Future<Weather> _currentOf(String city) => _current.putIfAbsent(city, () => _service.fetchCurrent(city));
+  Future<List<DayForecast>> _forecastOf(String city) => _forecasts.putIfAbsent(city, () => _service.fetchForecast(city));
+
   // toggles the heart of a city: if it was saved, it is removed; if it was not saved, it is added.
   void _toggleSaved(String city) {
     setState(() {
@@ -60,6 +79,21 @@ class _HomeScreenState extends State<HomeScreen>{
         _savedCities.remove(city);
       }
     });
+  }
+
+  // LAB 3: opens the settings. The units go down in the constructor (data down),
+  // the changes come back with two callbacks, which run setState here (events up).
+  void _openSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SettingsScreen(
+          celsius: _celsius,
+          kmh: _kmh,
+          onCelsiusChanged: (celsius) => setState(() => _celsius = celsius),
+          onKmhChanged: (kmh) => setState(() => _kmh = kmh),
+        ),
+      ),
+    );
   }
 
   // Opens the city picker and waits until it's closed.
@@ -78,7 +112,17 @@ class _HomeScreenState extends State<HomeScreen>{
     Navigator.of(context).push(
       // when we create a new CityDetailScreen we pass the city in the constructor
       // CityDetailScreen is a stateless widget (it doesn't have a state, it just shows the data passed in the constructor)
-      MaterialPageRoute(builder: (context) => CityDetailScreen(city: city)),
+      MaterialPageRoute(
+        builder: (context) => CityDetailScreen(
+          city: city,
+          // mind that we pass the Future with a parameter, there
+          current: _currentOf(city),
+          forecast: _forecastOf(city),
+          // LAB 3: we also pass the units, and the two Futures with its data
+          celsius: _celsius,
+          kmh: _kmh,
+        ),
+      ),
     );
   }
 
@@ -100,7 +144,8 @@ class _HomeScreenState extends State<HomeScreen>{
                   children: [
                     Text('Weather', style: AppText.screenTitle),
                     const Spacer(),
-                    GlassIconButton(icon: Icons.settings_rounded)
+                    // LAB 3: the settings button now opens the settings
+                    GlassIconButton(icon: Icons.settings_rounded, onTap: _openSettings)
                   ],
                 ),
                 SizedBox(height: 12),
@@ -124,16 +169,35 @@ class _HomeScreenState extends State<HomeScreen>{
 
                   child: _tab == 0
                       // Home tab: the weather card, in the middle
+                      // LAB 3: SingleChildScrollView: if the card is taller than the space (landscape), it scrolls
                       ? Center(
-                          child: WeatherCard(
-                            city: _city,
-                            condition: 'Rain',
-                            temp: 12,
-                            description: 'Light rain',
-                            humidity: 80,
-                            windKmh: 15,
-                            saved: _savedCities.contains(_city),
-                            onToggleSave: () => _toggleSaved(_city),
+                          child: SingleChildScrollView(
+                            // LAB 3: the weather arrives later. FutureBuilder builds again when the Future changes:
+                            // waiting, then data or error.
+                            child: FutureBuilder<Weather>(
+                              future: _currentOf(_city),
+                              builder: (context, snapshot) {
+                                // the request failed: the message of the WeatherException
+                                if (snapshot.hasError) return ErrorView(message: '${snapshot.error}');
+                                // no data yet: still waiting for the server
+                                if (!snapshot.hasData) return const LoadingView();
+
+                                // the data arrived. ! : "I know it's not null", we just checked hasData
+                                final weather = snapshot.data!;
+                                return WeatherCard(
+                                  city: _city,
+                                  condition: weather.condition,
+                                  temp: weather.temp,
+                                  description: weather.description,
+                                  humidity: weather.humidity,
+                                  windKmh: weather.windKmh,
+                                  saved: _savedCities.contains(_city),
+                                  onToggleSave: () => _toggleSaved(_city),
+                                  celsius: _celsius,
+                                  kmh: _kmh,
+                                );
+                              },
+                            ),
                           ),
                         )
                       // Saved tab: the list of saved cities
@@ -287,7 +351,11 @@ class WeatherCard extends StatelessWidget{
   final VoidCallback? onToggleSave; 
   // void function() 
 
-  const WeatherCard({super.key, required this.city, required this.condition, required this.temp, required this.description, required this.humidity, required this.windKmh, required this.saved, this.onToggleSave});
+  // LAB 3: the units. The card doesn't decide them: it receives them from HomeScreen.
+  final bool celsius;
+  final bool kmh;
+
+  const WeatherCard({super.key, required this.city, required this.condition, required this.temp, required this.description, required this.humidity, required this.windKmh, required this.saved, this.onToggleSave, required this.celsius, required this.kmh});
 
   @override
   Widget build(BuildContext context){
@@ -319,7 +387,8 @@ class WeatherCard extends StatelessWidget{
         ),
         const SizedBox(height: 8),
         WeatherIcon(size: 96, condition: condition),
-        Text('${temp.toStringAsFixed(0)}°', style: AppText.temp),
+        // LAB 3: the temperature in the unit we received
+        Text(formatTemp(temp, celsius), style: AppText.temp),
         Text(description, style: AppText.description),
         const SizedBox(height: 16),
         Row(
@@ -328,7 +397,7 @@ class WeatherCard extends StatelessWidget{
           children: [
             InfoChip(icon: Icons.water_drop_rounded, value: '$humidity%', label: 'Humidity'),
             const SizedBox(width: 8),
-            InfoChip(icon: Icons.air_rounded, value: '$windKmh km/h', label: 'Wind'),
+            InfoChip(icon: Icons.air_rounded, value: formatWind(windKmh, kmh), label: 'Wind'),
           ]
         ),
 
@@ -433,18 +502,22 @@ class BottomTabBar extends StatelessWidget {
 /// A reusable 34×34 glass square for the top-bar icon buttons (in the home this is the settings button)
 class GlassIconButton extends StatelessWidget {
   final IconData icon;
-  const GlassIconButton({super.key, required this.icon});
+  final VoidCallback? onTap; // LAB 3: called when the button is tapped, same as SearchField
+  const GlassIconButton({super.key, required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 34,
-      height: 34,
-      child: GlassCard(
-        radius: 12,
-        fill: AppColors.chipFill,
-        padding: EdgeInsets.zero,
-        child: Center(child: Icon(icon, size: 18, color: AppColors.ink)),
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 34,
+        height: 34,
+        child: GlassCard(
+          radius: 12,
+          fill: AppColors.chipFill,
+          padding: EdgeInsets.zero,
+          child: Center(child: Icon(icon, size: 18, color: AppColors.ink)),
+        ),
       ),
     );
   }
@@ -507,7 +580,12 @@ class CityPickerScreen extends StatelessWidget {
 /// A pushed screen: receives a city in the constructor and shows it.
 class CityDetailScreen extends StatelessWidget {
   final String city;
-  const CityDetailScreen({super.key, required this.city});
+  // LAB 3: the data, as Futures from HomeScreen, and the units
+  final Future<Weather> current;
+  final Future<List<DayForecast>> forecast;
+  final bool celsius;
+  final bool kmh;
+  const CityDetailScreen({super.key, required this.city, required this.current, required this.forecast, required this.celsius, required this.kmh});
 
   @override
   Widget build(BuildContext context) {
@@ -519,15 +597,190 @@ class CityDetailScreen extends StatelessWidget {
         foregroundColor: AppColors.ink,
       ),
       body: Center(
-        child: WeatherCard(
-          city: city,
-          condition: 'Rain',
-          temp: 12,
-          description: 'Light rain',
-          humidity: 80,
-          windKmh: 15,
-          saved: true,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // LAB 3: two requests, two FutureBuilders: the card and the forecast each appear when their data arrives
+              FutureBuilder<Weather>(
+                future: current,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) return ErrorView(message: '${snapshot.error}');
+                  if (!snapshot.hasData) return const LoadingView();
+                  final weather = snapshot.data!;
+                  return WeatherCard(
+                    city: city,
+                    condition: weather.condition,
+                    temp: weather.temp,
+                    description: weather.description,
+                    humidity: weather.humidity,
+                    windKmh: weather.windKmh,
+                    saved: true,
+                    celsius: celsius,
+                    kmh: kmh,
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              // LAB 3: the next 5 days, one DayCard each
+              FutureBuilder<List<DayForecast>>(
+                future: forecast,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) return Text('${snapshot.error}', style: AppText.description);
+                  if (!snapshot.hasData) return const LoadingView();
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final day in snapshot.data!) DayCard(day: day, celsius: celsius),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+}
+
+// LAB 3: the units, in one place. The data is always in °C and km/h:
+// we convert only when we show it, so changing the unit never changes the data.
+String formatTemp(int celsius, bool useCelsius) =>
+    useCelsius ? '$celsius°' : '${(celsius * 9 / 5 + 32).round()}°';
+
+String formatWind(int kmh, bool useKmh) =>
+    useKmh ? '$kmh km/h' : '${(kmh * 0.621).round()} mph';
+
+// LAB 3: one day of the forecast: the day, the icon, the max and the min
+class DayCard extends StatelessWidget {
+  final DayForecast day;
+  final bool celsius;
+  const DayCard({super.key, required this.day, required this.celsius});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        children: [
+          Text(day.day, style: AppText.chipLabel),
+          const SizedBox(height: 4),
+          WeatherIcon(size: 24, condition: day.condition),
+          const SizedBox(height: 4),
+          Text(formatTemp(day.max, celsius), style: AppText.chipValue),
+          Text(formatTemp(day.min, celsius), style: AppText.chipLabel),
+        ],
+      ),
+    );
+  }
+}
+
+// LAB 3: while we wait for the server
+class LoadingView extends StatelessWidget {
+  const LoadingView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(24),
+      child: CircularProgressIndicator(color: AppColors.ink),
+    );
+  }
+}
+
+// LAB 3: when the request fails: a short message, no stack traces
+class ErrorView extends StatelessWidget {
+  final String message;
+  const ErrorView({super.key, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.cloud_off_rounded, size: 44, color: AppColors.ink),
+          const SizedBox(height: 12),
+          Text(message, textAlign: TextAlign.center, style: AppText.description),
+        ],
+      ),
+    );
+  }
+}
+
+// LAB 3: the settings. A pushed screen, like the city picker.
+// It doesn't own the units: it receives them (data down) and reports the changes with callbacks (events up).
+class SettingsScreen extends StatefulWidget {
+  final bool celsius;                        // the units when the screen opens
+  final bool kmh;
+  final ValueChanged<bool> onCelsiusChanged; // called with the new unit
+  final ValueChanged<bool> onKmhChanged;
+  const SettingsScreen({super.key, required this.celsius, required this.kmh, required this.onCelsiusChanged, required this.onKmhChanged});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  // A copy of the units, for this screen only. Why a copy?
+  // HomeScreen's setState rebuilds HomeScreen, not the screens pushed on top of it:
+  // without a copy, the switches would keep showing the old unit. So we update both: the copy and HomeScreen.
+  // late: "it has no value yet, I promise to give it one before using it" (in initState).
+  late bool _celsius;
+  late bool _kmh;
+
+  // Notifications and location come in a later lab: for now these switches only change here.
+  // Nobody else needs them, so they are local state.
+  bool _reminder = true;
+  bool _useLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _celsius = widget.celsius; // the starting values come from HomeScreen
+    _kmh = widget.kmh;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.skyMid,
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: AppColors.skyMid,
+        foregroundColor: AppColors.ink,
+      ),
+      body: ListView(
+        children: [
+          SwitchListTile(
+            title: Text('Temperature in °C', style: AppText.cityName),
+            value: _celsius,
+            onChanged: (celsius) {
+              setState(() => _celsius = celsius); // this screen
+              widget.onCelsiusChanged(celsius);   // HomeScreen
+            },
+          ),
+          SwitchListTile(
+            title: Text('Wind in km/h', style: AppText.cityName),
+            value: _kmh,
+            onChanged: (kmh) {
+              setState(() => _kmh = kmh);
+              widget.onKmhChanged(kmh);
+            },
+          ),
+          SwitchListTile(
+            title: Text('Daily reminder', style: AppText.cityName),
+            value: _reminder,
+            onChanged: (value) => setState(() => _reminder = value),
+          ),
+          SwitchListTile(
+            title: Text('Use my location', style: AppText.cityName),
+            value: _useLocation,
+            onChanged: (value) => setState(() => _useLocation = value),
+          ),
+        ],
       ),
     );
   }

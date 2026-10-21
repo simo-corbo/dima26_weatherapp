@@ -1,11 +1,11 @@
 {
-    "name": "dima26_weatherapp",
-    "short_name": "dima26_weatherapp",
+    "name": "Weather",
+    "short_name": "Weather",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#3D86E0",
+    "theme_color": "#3D86E0",
+    "description": "Weather from OpenWeather, on every screen.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

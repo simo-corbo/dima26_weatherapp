@@ -34,6 +34,7 @@ class AppColors {
   static final white80 = Colors.white.withValues(alpha: 0.80); // heart, not saved
   static final white70 = Colors.white.withValues(alpha: 0.70); // empty state
   static final hairline = Colors.white.withValues(alpha: 0.13); // dividers in Settings
+  static final white92 = Colors.white.withValues(alpha: 0.92); // Lab 4: switch track, on
 }
 
 // The full-screen background gradient.
@@ -43,6 +44,25 @@ const skyGradient = LinearGradient(
   colors: [AppColors.skyTop, AppColors.skyMid, AppColors.skyBottom],
   stops: [0.0, 0.52, 1.0],
 );
+
+// Lab 4: dark mode. The same sky, at night: same stops, darker blues.
+// Glass, white type and the sun don't change.
+const nightTop = Color(0xFF2A3F6B);
+const nightMid = Color(0xFF1C2C4F);
+const nightBottom = Color(0xFF111B33);
+
+const nightGradient = LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [nightTop, nightMid, nightBottom],
+  stops: [0.0, 0.52, 1.0],
+);
+
+// Lab 4: every screen asks the Theme if we are in dark mode, and picks its colours.
+// Theme.of(context) works like MediaQuery.of(context): MaterialApp puts it above every screen.
+bool isDark(BuildContext context) => Theme.of(context).brightness == Brightness.dark;
+LinearGradient skyOf(BuildContext context) => isDark(context) ? nightGradient : skyGradient;
+Color skyMidOf(BuildContext context) => isDark(context) ? nightMid : AppColors.skyMid;
 
 class AppText {
   AppText._();

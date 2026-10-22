@@ -12,7 +12,6 @@ import 'package:dima26_weatherapp/weather_api.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// ---------------------------------------------------------------------------
 // The repository: the class that talks to the server.
 // WeatherService (weather_api.dart, Lab 3) already is one: http and JSON stay there, not in the widgets.
 // The provider creates it once and gives it to whoever needs it.
@@ -20,7 +19,6 @@ final weatherServiceProvider = Provider<WeatherService>((ref) {
   return WeatherService();
 });
 
-// ---------------------------------------------------------------------------
 // The settings. An immutable model: we never change a field,
 // we create a new Settings with copyWith (a copy with one value changed).
 class Settings {
@@ -56,7 +54,6 @@ class SettingsNotifier extends Notifier<Settings> {
 // The Provider: the access point. Any widget can ref.watch(settingsProvider).
 final settingsProvider = NotifierProvider<SettingsNotifier, Settings>(SettingsNotifier.new);
 
-// ---------------------------------------------------------------------------
 // The saved cities: Home (the heart) and Saved (the list) both need them.
 class SavedCitiesNotifier extends Notifier<Set<String>> {
   @override
@@ -71,7 +68,7 @@ class SavedCitiesNotifier extends Notifier<Set<String>> {
     } else {
       updated.add(city);    // it wasn't saved: add it
     }
-    state = updated;
+    state = updated; // most important part! triggers the notification 
   }
 }
 

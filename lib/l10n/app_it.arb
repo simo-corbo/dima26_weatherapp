@@ -1,0 +1,32 @@
+{
+  "@@locale": "it",
+
+  "appTitle": "Meteo",
+  "searchCity": "Cerca città",
+  "home": "Home",
+  "saved": "Salvate",
+  "chooseOnTheLeft": "Scegli una città a sinistra",
+  "chooseCity": "Scegli una città",
+  "orTypeCity": "Oppure scrivi una città",
+  "humidity": "Umidità",
+  "wind": "Vento",
+  "today": "Oggi",
+
+  "settings": "Impostazioni",
+  "temperatureInCelsius": "Temperatura in °C",
+  "windInKmh": "Vento in km/h",
+  "theme": "Tema",
+  "language": "Lingua",
+  "system": "Sistema",
+  "light": "Chiaro",
+  "dark": "Scuro",
+  "dailyReminder": "Promemoria giornaliero",
+  "useMyLocation": "Usa la mia posizione",
+
+  "reminderTitle": "Buongiorno!",
+  "reminderBody": "Controlla il meteo di oggi prima di uscire.",
+  "reminderConfirm": "Promemoria attivo: ogni giorno alle 8:00.",
+  "notificationsDenied": "Le notifiche sono disattivate per questa app. Puoi attivarle nelle impostazioni del telefono.",
+
+  "condition": "{condition, select, Clear{Sereno} Clouds{Nuvoloso} Rain{Pioggia} Drizzle{Pioggerella} Thunderstorm{Temporale} Snow{Neve} Mist{Foschia} Fog{Nebbia} other{{condition}}}"
+}

@@ -1,0 +1,39 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Weather",
+  "@appTitle": {"description": "The app's name, at the top of Home and in the app switcher"},
+  "searchCity": "Search city",
+  "home": "Home",
+  "@home": {"description": "The first tab"},
+  "saved": "Saved",
+  "@saved": {"description": "The second tab: the saved cities"},
+  "chooseOnTheLeft": "Choose a city on the left",
+  "chooseCity": "Choose a city",
+  "orTypeCity": "Or type a city",
+  "humidity": "Humidity",
+  "wind": "Wind",
+  "today": "Today",
+  "@today": {"description": "The first day of the forecast"},
+
+  "settings": "Settings",
+  "temperatureInCelsius": "Temperature in °C",
+  "windInKmh": "Wind in km/h",
+  "theme": "Theme",
+  "language": "Language",
+  "system": "System",
+  "@system": {"description": "Follow the phone's setting (for the theme and the language)"},
+  "light": "Light",
+  "dark": "Dark",
+  "dailyReminder": "Daily reminder",
+  "useMyLocation": "Use my location",
+
+  "reminderTitle": "Good morning!",
+  "reminderBody": "Check today’s weather before you go out.",
+  "reminderConfirm": "Reminder on: every day at 8:00.",
+  "notificationsDenied": "Notifications are off for this app. You can allow them in the phone’s settings.",
+
+  "condition": "{condition, select, Clear{Clear sky} Clouds{Cloudy} Rain{Rain} Drizzle{Drizzle} Thunderstorm{Thunderstorm} Snow{Snow} Mist{Mist} Fog{Fog} other{{condition}}}",
+  "@condition": {"description": "The weather on the card, from the server's condition (Clear, Clouds, Rain...). Any condition not listed is shown as the server wrote it, in English",
+    "placeholders": {"condition": {"type": "String"}}}
+}

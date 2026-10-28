@@ -1,36 +1,55 @@
-# weather_app — Flutter lab track (Mobile App Design)
+# weather_app — DIMA lab track (Mobile App Design)
 
-A small weather app (OpenWeather API, frosted-glass design) built incrementally across
-**five lab sessions** plus two optional self-study extensions. The repository grows week
-by week: each session adds that lesson's code and its notes in `docs/`.
+A small weather app (OpenWeather API, frosted-glass design) built lab by lab. It is first built in
+**Flutter** (Labs 1–5), and from Lab 6 the same app is built again in **React Native**. Each lab adds that lesson's
+code; the slides are shared separately.
 
-## Lessons
+- branch **`main`**: the Flutter app (Labs 1–5);
+- branch **`react-native`**: the React Native app (from Lab 6), a separate Expo project with its own history.
 
-| Session | Topic |
-|--------:|-------|
-| 1 | Stateless widgets — tokens, composition, the static Home screen |
-| 2 | Stateful widgets — controllers, Navigation — multi-screen project, tabs, `Navigator` |
-| 3 | `http` + `FutureBuilder, lifting state up |
-| 4 | Bloc/Cubit — app-wide state, persistence, notifications & location |
-| 5 | Adaptive & theming — landscape/tablet layouts, dark theme |
-| — | Production craft (self-study) — animations, custom painters, caching, launcher icon |
-| — | Cloud sync (self-study) — Firebase anonymous auth + Firestore, the repository swap |
+## Labs
 
-## Running
+| Lab | Framework | Topic | Code |
+|----:|-----------|-------|------|
+| 1 | Flutter | Stateless widgets: tokens, composition, the static Home screen | `lib/mainlab1.dart` |
+| 2 | Flutter | Stateful widgets, navigation stack, returning data, tabs | `lib/mainlab2.dart` (+ `_navbar`, `_drawer` variants) |
+| 3 | Flutter | Lifting state up, REST API, JSON, `FutureBuilder` | `lib/mainlab3.dart`, `lib/weather_api.dart` |
+| 4 | Flutter | Riverpod (shared state, dark mode), responsive and adaptive layouts | `lib/mainlab4.dart`, `lib/providers.dart` |
+| 5 | Flutter | Saving to a file, English/Italian, location, a daily reminder, tests, a recap of the whole app with UML | `lib/main.dart` and the files below |
+| 6 | React Native | Expo, components, JSX, props, styles, Flexbox, safe areas: the Lab 1 screen again | branch `react-native` |
+
+Lab 5's code is the current Flutter app: `lib/main.dart`, `lib/providers.dart`,
+`lib/storage.dart`, `lib/location.dart`, `lib/notifications.dart`, the texts in `lib/l10n/` and
+the tests in `test/`. Its comments are marked `// LAB 5:`.
+
+## Running the Flutter app
 
 ```bash
 flutter pub get
-flutter run
+flutter run --dart-define-from-file=dart_define.json
 ```
 
-From lesson 3 the app calls OpenWeather. Put your API key in `dart_define.json`
-(git-ignored) and run with `flutter run --dart-define-from-file=dart_define.json`,
-or replace the `YOUR_OPENWEATHER_API_KEY` placeholder locally — never commit a real key.
+From Lab 3 the app calls OpenWeather. Put your API key in `dart_define.json` (git-ignored; copy
+`dart_define.example.json`). VS Code passes it for you through `.vscode/launch.json`. Never commit a real key.
 
-For the optional cloud-sync extension, create a Firebase project and run
-`flutterfire configure`; without it the app detects the missing config and falls back to
-local-only persistence.
+To run an older lab, run its file: `flutter run -t lib/mainlab2.dart`.
+
+Tests (Lab 5): `flutter test` (16 tests, about a second; no API key or network needed).
+
+## Running the React Native app (Lab 6)
+
+```bash
+git clone -b react-native --single-branch https://github.com/simo-corbo/dima26_weatherapp.git weather_rn
+cd weather_rn
+npm install
+npx expo start
+```
+
+Then scan the QR code with the **Expo Go** app on your phone, or press `i` (iOS simulator),
+`a` (Android emulator) or `w` (web browser). The step-by-step guide, for people who have never used
+React Native, is the README of the `react-native` branch.
 
 ## Design contract
 
-Open `weather_design_contract.html` in a browser. Every lesson builds to it.
+Open `weather_design_contract.html` in a browser. Every lab builds to it: the React Native app uses
+the same colours and sizes (`designTokens.ts` on the `react-native` branch mirrors `lib/design_tokens.dart`).

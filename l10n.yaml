@@ -1,0 +1,6 @@
+# LAB 5: the configuration of Flutter's translation tool (gen-l10n).
+# The texts are in lib/l10n: app_en.arb is the template (English), app_it.arb the Italian translation.
+# At every build, Flutter generates lib/l10n/app_localizations.dart from them.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart

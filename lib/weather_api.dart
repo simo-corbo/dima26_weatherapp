@@ -49,12 +49,15 @@ class Weather {
 
 /// One day of the forecast strip.
 class DayForecast {
-  final String day;       // "Today", "Tue", ...
+  final String day;       // "Today", "Tue", ... (the English label of Lab 3: mainlab3/mainlab4 still show it)
+  // LAB 5: the date. The name of the day depends on the user's language,
+  // so the widget writes it (DayCard), like the units. The data stays the same in every language.
+  final DateTime date;
   final String condition; // the condition at midday
   final int max;          // °C
   final int min;          // °C
 
-  const DayForecast({required this.day, required this.condition, required this.max, required this.min});
+  const DayForecast({required this.day, required this.date, required this.condition, required this.max, required this.min});
 }
 
 /// A problem we can explain to the user: the error view shows its message.
@@ -77,29 +80,37 @@ class WeatherService {
 
   /// GET /data/2.5/weather?q={city}&units=metric&appid={key}
   Future<Weather> fetchCurrent(String city) async {
-    final json = await _get('/data/2.5/weather', city);
+    final json = await _get('/data/2.5/weather', {'q': city});
+    return Weather.fromJson(json);
+  }
+
+  /// LAB 5: GET /data/2.5/weather?lat={lat}&lon={lon}&units=metric&appid={key}
+  /// The same answer, for a position instead of a name: "name" says which city it is.
+  Future<Weather> fetchCurrentAt(double lat, double lon) async {
+    final json = await _get('/data/2.5/weather', {'lat': '$lat', 'lon': '$lon'});
     return Weather.fromJson(json);
   }
 
   /// GET /data/2.5/forecast?q={city}&units=metric&appid={key}
   /// The answer is a list of 40 items, one every 3 hours for 5 days: we group them by day.
   Future<List<DayForecast>> fetchForecast(String city) async {
-    final json = await _get('/data/2.5/forecast', city);
+    final json = await _get('/data/2.5/forecast', {'q': city});
     return forecastFromJson(json);
   }
 
-  /// The request both methods share. async: it can wait (await) without blocking the app.
-  Future<Map<String, dynamic>> _get(String path, String city) async { // json is a Map<String, dynamic> 
+  /// The request all the methods share. async: it can wait (await) without blocking the app.
+  /// LAB 5: `where` is the place: {'q': city}, or {'lat': ..., 'lon': ...}
+  Future<Map<String, dynamic>> _get(String path, Map<String, String> where) async { // json is a Map<String, dynamic> 
     if (_apiKey.isEmpty) {
       throw const WeatherException('No API key. Run with --dart-define-from-file=dart_define.json');
     }
 
     // Uri.https builds the URL and encodes the parameters for us ("New York" -> "New%20York")
-    final uri = Uri.https(_host, path, {
-      'q': city,
-      'units': 'metric', // always C: we convert at display time
-      'appid': _apiKey,
-    });
+    // LAB 5: the parameters = a copy of the place, plus the two that every request has
+    final parameters = Map<String, String>.from(where);
+    parameters['units'] = 'metric'; // always C: we convert at display time
+    parameters['appid'] = _apiKey;
+    final uri = Uri.https(_host, path, parameters);
 
     final http.Response response;
     try {
@@ -115,7 +126,7 @@ class WeatherService {
       case 401:
         throw const WeatherException('Invalid API key.');
       case 404:
-        throw WeatherException('City "$city" not found');
+        throw WeatherException('City "${where['q'] ?? 'here'}" not found');
       default:
         throw WeatherException('Could not load the weather (error ${response.statusCode}).');
     }
@@ -154,7 +165,7 @@ List<DayForecast> forecastFromJson(Map<String, dynamic> json) {
       }
     }
     final label = days.isEmpty ? 'Today' : weekdays[DateTime.parse(date).weekday - 1];
-    days.add(DayForecast(day: label, condition: condition, max: max, min: min));
+    days.add(DayForecast(day: label, date: DateTime.parse(date), condition: condition, max: max, min: min));
   }
   return days;
 }

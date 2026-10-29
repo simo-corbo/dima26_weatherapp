@@ -1,4 +1,4 @@
-// LAB 5: where the phone is. A repository, like WeatherService and AppStorage:
+// where the phone is. A repository, like WeatherService and AppStorage:
 // the providers ask "where are we?", and only this class knows about GPS and permissions.
 
 import 'package:geolocator/geolocator.dart'; // flutter pub add geolocator

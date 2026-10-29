@@ -1,4 +1,4 @@
-// LAB 5: the daily reminder. A LOCAL notification: our app asks the phone
+// the daily reminder. A LOCAL notification: our app asks the phone
 // "show this text every day at 8:00", and from then on the phone does it by itself,
 // even if the app is closed or killed. No server involved (that would be a PUSH notification).
 //

@@ -1,4 +1,4 @@
-// LAB 5: the memory of the app, in a file.
+// the memory of the app, in a file.
 //
 // Until Lab 4 everything lived in RAM: in a State, or in a provider.
 // When the app is closed, the system frees that memory, and at the next start

@@ -1,15 +1,31 @@
 import 'package:dima26_weatherapp/design_tokens.dart';
 import 'package:dima26_weatherapp/weather_api.dart'; // LAB 3: the REST API (Weather, WeatherService)
 import 'package:dima26_weatherapp/providers.dart'; // LAB 4: the shared state, with Riverpod
+import 'package:dima26_weatherapp/storage.dart'; // LAB 5: the file where we save settings and cities
+import 'package:dima26_weatherapp/l10n/app_localizations.dart'; // LAB 5: generated from lib/l10n/*.arb
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // LAB 4: flutter pub add flutter_riverpod
+import 'package:intl/intl.dart'; // LAB 5: DateFormat, the names of the days in each language
 import 'dart:ui';
 
 // LAB 4: ProviderScope is where Riverpod keeps the values of all the providers.
 // It must wrap the whole app, so every widget can reach them.
 // retry: Riverpod 3 retries a failed request up to 10 times (about 40 seconds).
 // A city that doesn't exist won't appear by asking again, so we say "never retry" (null).
-void main () => runApp(ProviderScope(retry: (retryCount, error) => null, child: const WeatherApp()));
+// LAB 5: main is async now: before the app starts, we read the file (a Future) and wait for it.
+// Reading a small file takes a few milliseconds: meanwhile the phone still shows the launch screen.
+Future<void> main() async {
+  // LAB 5: path_provider asks iOS or Android for the app's folder, through Flutter's engine.
+  // Before runApp the engine isn't started yet: ensureInitialized starts it.
+  WidgetsFlutterBinding.ensureInitialized();
+  final storage = await AppStorage.open();
+  runApp(ProviderScope(
+    retry: (retryCount, error) => null,
+    // LAB 5: storageProvider gives this storage, already read, to every provider (see providers.dart)
+    overrides: [storageProvider.overrideWithValue(storage)],
+    child: const WeatherApp(),
+  ));
+}
 
 // equivalent to 
 
@@ -31,6 +47,13 @@ class WeatherApp extends ConsumerWidget{
     return MaterialApp(
       title: 'Weather',
       debugShowCheckedModeBanner: false,
+      // LAB 5: the languages of the app, and where their texts come from:
+      // ours (AppLocalizations), and Flutter's own (the back button's tooltip, the date pickers...).
+      // localizationsDelegates and supportedLocales are generated from the .arb files.
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      // LAB 5: like themeMode: null = follow the phone; otherwise the language chosen in Settings
+      locale: settings.language == 'system' ? null : Locale(settings.language),
       home: const HomeScreen(), // LAB 4: no more values or callbacks to pass down
       // LAB 4: two themes, and themeMode chooses which one is used (as in the lecture).
       // ThemeMode.system: Flutter picks light or dark from the phone, and follows it live.
@@ -66,7 +89,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>{
   int _tab = 0;                         // 0 = Home, 1 = Saved
 
   // default city is London
-  String _city = 'London';              // the city shown on Home
+  // LAB 5: null = the user hasn't picked a city yet. Then Home shows London,
+  // or, if "Use my location" is on, the weather where the phone is.
+  String? _city;                        // the city shown on Home
 
   // LAB 4: the saved cities and the units are not here any more: they are shared by several screens,
   // so they moved to providers (providers.dart). What stays here is LOCAL state: only HomeScreen uses it.
@@ -137,6 +162,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen>{
     // LAB 4: the shared state, from Riverpod. ref.watch = read it, and rebuild when it changes.
     final settings = ref.watch(settingsProvider);
     final saved = ref.watch(savedCitiesProvider);
+    // LAB 5: the texts in the user's language. ! : it's never null below MaterialApp
+    final l10n = AppLocalizations.of(context)!;
+
+    // LAB 5: which weather Home shows: where the phone is (no city picked, and the setting is on),
+    // or the city picked in the search, London by default. Both are an AsyncValue<Weather>: .when below doesn't care.
+    final here = _city == null && settings.useLocation;
+    final homeWeather = here ? ref.watch(hereWeatherProvider) : ref.watch(currentWeatherProvider(_city ?? 'London'));
 
     // same as before
     // LAB 4: we keep the screen in a variable, so we can put something next to it
@@ -161,7 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>{
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween, 
                         children: [
-                          Text('Weather', style: AppText.screenTitle),
+                          Text(l10n.appTitle, style: AppText.screenTitle),
                           const Spacer(),
                           // LAB 3: the settings button now opens the settings
                           GlassIconButton(icon: Icons.settings_rounded, onTap: _openSettings)
@@ -196,25 +228,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen>{
                                   // LAB 3: the weather arrives later.
                                   // LAB 4: ref.watch(currentWeatherProvider(_city)) gives an AsyncValue: loading, error or data.
                                   // .when builds the right widget for each of the three (it replaces FutureBuilder).
-                                  child: ref.watch(currentWeatherProvider(_city)).when(
+                                  child: homeWeather.when( // LAB 5: was ref.watch(currentWeatherProvider(_city))
                                     // no data yet: still waiting for the server
                                     loading: () => const LoadingView(),
                                     // the request failed: the message of the WeatherException
                                     error: (error, stackTrace) => ErrorView(message: '$error'),
                                     // the data arrived
-                                    data: (weather) => WeatherCard(
-                                      city: _city,
-                                      condition: weather.condition,
-                                      temp: weather.temp,
-                                      description: weather.description,
-                                      humidity: weather.humidity,
-                                      windKmh: weather.windKmh,
-                                      saved: saved.contains(_city),
-                                      // LAB 4: ref.read(...notifier): we call an operation, we don't need to watch
-                                      onToggleSave: () => ref.read(savedCitiesProvider.notifier).toggle(_city),
-                                      celsius: settings.celsius,
-                                      kmh: settings.kmh,
-                                    ),
+                                    // LAB 5: a block instead of =>, to compute the city first.
+                                    // Where the phone is, the server tells us the city's name (weather.name)
+                                    data: (weather) {
+                                      final city = here ? weather.name : _city ?? 'London';
+                                      return WeatherCard(
+                                        city: city,
+                                        condition: weather.condition,
+                                        temp: weather.temp,
+                                        // LAB 5: not the server's description ("Light rain", always in English):
+                                        // the condition ("Rain"), translated by our .arb files, like the day names
+                                        description: l10n.condition(weather.condition),
+                                        humidity: weather.humidity,
+                                        windKmh: weather.windKmh,
+                                        saved: saved.contains(city),
+                                        // LAB 4: ref.read(...notifier): we call an operation, we don't need to watch
+                                        onToggleSave: () => ref.read(savedCitiesProvider.notifier).toggle(city),
+                                        celsius: settings.celsius,
+                                        kmh: settings.kmh,
+                                      );
+                                    },
                                   ),
                                 ),
                               )
@@ -306,7 +345,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>{
   // Used by the two panes and by the right screen of a dual-screen phone.
   Widget _detailPane() {
     if (_selected == null) {
-      return Center(child: Text('Choose a city on the left', style: AppText.description));
+      return Center(child: Text(AppLocalizations.of(context)!.chooseOnTheLeft, style: AppText.description));
     }
     // the same widget that the detail screen shows, without the screen around it.
     // LAB 4: only the city: CityDetailView reads the weather and the units from the providers.
@@ -451,6 +490,7 @@ class WeatherCard extends StatelessWidget{
 
   @override
   Widget build(BuildContext context){
+    final l10n = AppLocalizations.of(context)!; // LAB 5
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -487,9 +527,9 @@ class WeatherCard extends StatelessWidget{
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            InfoChip(icon: Icons.water_drop_rounded, value: '$humidity%', label: 'Humidity'),
+            InfoChip(icon: Icons.water_drop_rounded, value: '$humidity%', label: l10n.humidity),
             const SizedBox(width: 8),
-            InfoChip(icon: Icons.air_rounded, value: formatWind(windKmh, kmh), label: 'Wind'),
+            InfoChip(icon: Icons.air_rounded, value: formatWind(windKmh, kmh), label: l10n.wind),
           ]
         ),
 
@@ -522,7 +562,7 @@ class SearchField extends StatelessWidget {
           children: [
             Icon(Icons.search, size: 18, color: Colors.white.withValues(alpha: 0.85)),
             const SizedBox(width: 10),
-            Text('Search city', style: AppText.searchHint),
+            Text(AppLocalizations.of(context)!.searchCity, style: AppText.searchHint), // LAB 5
           ],
         ),
       ),
@@ -572,18 +612,19 @@ class BottomTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!; // LAB 5
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _TabItem(
-            icon: Icons.home_rounded, label: 'Home', active: activeIndex == 0,
+            icon: Icons.home_rounded, label: l10n.home, active: activeIndex == 0,
 
             // onTap changes the state of the HomeScreen to the index of the tab, which is 0 for the first tab
             // onTap(0) returns the value 0 to the awaiting function in the HomeScreen, which sets the state of the HomeScreen to 0
             onTap: () => onTap(0)),
         const SizedBox(width: 48),
         _TabItem(
-            icon: Icons.bookmark_rounded, label: 'Saved', active: activeIndex == 1,
+            icon: Icons.bookmark_rounded, label: l10n.saved, active: activeIndex == 1,
             onTap: () => onTap(1)),
       ],
     );
@@ -599,17 +640,18 @@ class SideRail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!; // LAB 5
     return Padding(
       padding: const EdgeInsets.only(right: 20),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _TabItem(
-              icon: Icons.home_rounded, label: 'Home', active: activeIndex == 0,
+              icon: Icons.home_rounded, label: l10n.home, active: activeIndex == 0,
               onTap: () => onTap(0)),
           const SizedBox(height: 32),
           _TabItem(
-              icon: Icons.bookmark_rounded, label: 'Saved', active: activeIndex == 1,
+              icon: Icons.bookmark_rounded, label: l10n.saved, active: activeIndex == 1,
               onTap: () => onTap(1)),
         ],
       ),
@@ -656,7 +698,7 @@ class CityPickerScreen extends StatelessWidget {
       backgroundColor: skyMidOf(context),
       // AppBar adds the back arrow by itself, because this screen was pushed
       appBar: AppBar(
-        title: const Text('Choose a city'),
+        title: Text(AppLocalizations.of(context)!.chooseCity), // LAB 5
         backgroundColor: skyMidOf(context),
         foregroundColor: AppColors.ink,
       ),
@@ -682,7 +724,7 @@ class CityPickerScreen extends StatelessWidget {
               child: TextField(
                 style: AppText.cityName,
                 decoration: InputDecoration(
-                  hintText: 'Or type a city',
+                  hintText: AppLocalizations.of(context)!.orTypeCity, // LAB 5
                   hintStyle: AppText.searchHint,
                 ),
                 // called when the user presses enter on the keyboard 
@@ -742,7 +784,7 @@ class CityDetailView extends ConsumerWidget {
                 city: city,
                 condition: weather.condition,
                 temp: weather.temp,
-                description: weather.description,
+                description: AppLocalizations.of(context)!.condition(weather.condition), // LAB 5: as on Home
                 humidity: weather.humidity,
                 windKmh: weather.windKmh,
                 // LAB 4: the heart now works here too: the saved cities are reachable from any screen
@@ -787,11 +829,15 @@ class DayCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    // LAB 5: DateFormat.E = the short name of the day in the app's language: "Tue" in English, "mar" in Italian.
+    // The first day keeps its word, translated: "Today" / "Oggi"
+    final label = day.day == 'Today' ? l10n.today : DateFormat.E(l10n.localeName).format(day.date);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
         children: [
-          Text(day.day, style: AppText.chipLabel),
+          Text(label, style: AppText.chipLabel),
           const SizedBox(height: 4),
           WeatherIcon(size: 24, condition: day.condition),
           const SizedBox(height: 4),
@@ -841,28 +887,21 @@ class ErrorView extends StatelessWidget {
 // LAB 4: no values in the constructor, no callbacks, no copy of the units (Lab 3 needed one, because
 // HomeScreen's setState didn't rebuild a pushed screen). Now the screen watches settingsProvider:
 // when a setting changes, every screen that watches it rebuilds, this one included.
-class SettingsScreen extends ConsumerStatefulWidget {
+// LAB 5: a ConsumerWidget now. Its only local state, the two switches, became real settings
+// (Home needs "Use my location", and both must survive a restart): nothing local is left.
+class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
-  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  // Notifications and location come in a later lab: for now these switches only change here.
-  // Nobody else needs them, so they are local state: they stay with setState.
-  bool _reminder = true;
-  bool _useLocation = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // LAB 4: watch to show the settings; read(...notifier) to change them
     final settings = ref.watch(settingsProvider);
     final notifier = ref.read(settingsProvider.notifier);
+    final l10n = AppLocalizations.of(context)!; // LAB 5: every text of this screen
     return Scaffold(
       backgroundColor: skyMidOf(context),
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(l10n.settings),
         backgroundColor: skyMidOf(context),
         foregroundColor: AppColors.ink,
       ),
@@ -884,19 +923,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     children: [
                       // LAB 4: GlassSwitchTile (below): the contract's toggle, still an iOS switch on iPhone and a Material one on Android
                       GlassSwitchTile(
-                        title: 'Temperature in °C',
+                        title: l10n.temperatureInCelsius,
                         value: settings.celsius,
                         onChanged: notifier.setCelsius, // the Notifier changes the state: every screen updates
                       ),
                       GlassSwitchTile(
-                        title: 'Wind in km/h',
+                        title: l10n.windInKmh,
                         value: settings.kmh,
                         onChanged: notifier.setKmh,
                       ),
                       // LAB 4: the theme: a three-way choice. WeatherApp watches the same provider and switches the theme
                       // Same shape as a switch: value shows the setting, onChanged changes it.
                       ListTile(
-                        title: Text('Theme', style: AppText.cityName),
+                        title: Text(l10n.theme, style: AppText.cityName),
                         trailing: DropdownButton<ThemeMode>(
                           value: settings.themeMode,
                           // white like the rest of Settings, the menu in the colour of the sky, no underline
@@ -905,21 +944,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           underline: const SizedBox.shrink(),
                           onChanged: (mode) => notifier.setThemeMode(mode!), // ! : a dropdown gives a ThemeMode?, here never null
                           items: [
-                            DropdownMenuItem(value: ThemeMode.system, child: Text('System', style: AppText.cityName)),
-                            DropdownMenuItem(value: ThemeMode.light, child: Text('Light', style: AppText.cityName)),
-                            DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark', style: AppText.cityName)),
+                            DropdownMenuItem(value: ThemeMode.system, child: Text(l10n.system, style: AppText.cityName)),
+                            DropdownMenuItem(value: ThemeMode.light, child: Text(l10n.light, style: AppText.cityName)),
+                            DropdownMenuItem(value: ThemeMode.dark, child: Text(l10n.dark, style: AppText.cityName)),
                           ],
                         ),
                       ),
-                      GlassSwitchTile(
-                        title: 'Daily reminder',
-                        value: _reminder,
-                        onChanged: (value) => setState(() => _reminder = value),
+                      // LAB 5: the language, the same shape as the theme. Saved in the file like every setting.
+                      // The names of the languages are written in their own language: who can't read English must still find "Italiano".
+                      ListTile(
+                        title: Text(l10n.language, style: AppText.cityName),
+                        trailing: DropdownButton<String>(
+                          value: settings.language,
+                          iconEnabledColor: AppColors.ink,
+                          dropdownColor: skyMidOf(context),
+                          underline: const SizedBox.shrink(),
+                          onChanged: (language) => notifier.setLanguage(language!),
+                          items: [
+                            DropdownMenuItem(value: 'system', child: Text(l10n.system, style: AppText.cityName)),
+                            DropdownMenuItem(value: 'en', child: Text('English', style: AppText.cityName)),
+                            DropdownMenuItem(value: 'it', child: Text('Italiano', style: AppText.cityName)),
+                          ],
+                        ),
                       ),
+                      // LAB 5: the reminder asks the phone for permission, so the answer arrives later (async).
+                      // If the user says no, the switch stays off and a SnackBar explains why.
                       GlassSwitchTile(
-                        title: 'Use my location',
-                        value: _useLocation,
-                        onChanged: (value) => setState(() => _useLocation = value),
+                        title: l10n.dailyReminder,
+                        value: settings.reminder,
+                        onChanged: (value) async {
+                          final allowed = await notifier.setReminder(value,
+                              title: l10n.reminderTitle, body: l10n.reminderBody, confirmation: l10n.reminderConfirm);
+                          // after an await the screen may be closed: check before using its context
+                          if (!allowed && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.notificationsDenied)));
+                          }
+                        },
+                      ),
+                      // LAB 5: Home watches this setting. The permission is asked by LocationService, on Home
+                      GlassSwitchTile(
+                        title: l10n.useMyLocation,
+                        value: settings.useLocation,
+                        onChanged: notifier.setUseLocation,
                       ),
                     ],
                   ),

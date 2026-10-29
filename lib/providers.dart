@@ -25,14 +25,14 @@ final weatherServiceProvider = Provider<WeatherService>((ref) {
   return WeatherService();
 });
 
-// LAB 5: the second repository: WeatherService talks to the server, AppStorage to the disk.
+// the second repository: WeatherService talks to the server, AppStorage to the disk.
 // It must be read from the disk BEFORE the app starts (main in main.dart), and reading is a Future.
 // So this provider has no value of its own: main gives it one, with overrideWithValue.
 final storageProvider = Provider<AppStorage>((ref) {
   throw UnimplementedError('storageProvider is set in main()');
 });
 
-// LAB 5: two more repositories, for two more parts of the phone: the GPS and the notifications
+// two more repositories, for two more parts of the phone: the GPS and the notifications
 final locationServiceProvider = Provider<LocationService>((ref) => LocationService());
 final reminderServiceProvider = Provider<ReminderService>((ref) => ReminderService());
 
@@ -42,11 +42,11 @@ class Settings {
   final bool celsius; // true = °C, false = °F
   final bool kmh;     // true = km/h, false = mph
   final ThemeMode themeMode; // system (follow the phone), light or dark
-  // LAB 5: the language of the app: 'system' (follow the phone), 'en' or 'it'.
+  // the language of the app: 'system' (follow the phone), 'en' or 'it'.
   static const languages = ['system', 'en', 'it'];
   // A String, so it goes to the JSON file as it is.
   final String language;
-  // LAB 5: the two switches that in Lab 4 were local state of SettingsScreen.
+  // the two switches that in Lab 4 were local state of SettingsScreen.
   // Now Home needs useLocation, and the reminder must survive a restart: shared, and saved.
   final bool reminder;    // a notification every morning
   final bool useLocation; // Home shows the weather where the phone is
@@ -64,14 +64,14 @@ class Settings {
     );
   }
 
-  // LAB 5: Settings -> JSON, to write it in the file. The other direction of Weather.fromJson (Lab 3).
+  // Settings -> JSON, to write it in the file. The other direction of Weather.fromJson (Lab 3).
   // An enum like ThemeMode is not a JSON type: we save its name ("dark") as a string.
   Map<String, dynamic> toJson() {
     return {'celsius': celsius, 'kmh': kmh, 'themeMode': themeMode.name, 'language': language,
         'reminder': reminder, 'useLocation': useLocation};
   }
 
-  // LAB 5: JSON -> Settings, to read it back from the file.
+  // JSON -> Settings, to read it back from the file.
   // ?? : if a value is missing (a file written by an older version of the app), we use the default.
   factory Settings.fromJson(Map<String, dynamic> json) {
     return Settings(
@@ -94,10 +94,10 @@ class SettingsNotifier extends Notifier<Settings> {
   @override
   Settings build() {
     final storage = ref.watch(storageProvider);
-    // LAB 5: listenSelf is called every time `state` gets a new value (and once right after build).
+    // listenSelf is called every time `state` gets a new value (and once right after build).
     // So every change goes to the file, and the operations below stay exactly as in Lab 4.
     listenSelf((previous, next) => storage.write('settings', next.toJson()));
-    // LAB 5: the settings in the file, if there are any. The first time there are none: the defaults, as in Lab 4
+    // the settings in the file, if there are any. The first time there are none: the defaults, as in Lab 4
     final json = storage.read('settings');
     if (json == null) {
       return const Settings(celsius: true, kmh: true, themeMode: ThemeMode.system);

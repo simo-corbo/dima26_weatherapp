@@ -16,10 +16,10 @@ import { colors, text } from './designTokens';
 // Flutter: Icons.settings_rounded. Here: <MaterialIcons name="settings" />, the same icon set.
 type IconName = React.ComponentProps<typeof MaterialIcons>['name'];
 
-// ─── GlassCard ──────────────────────────────────────────────────────────────
+// GlassCard 
 // The rounded, translucent box that everything sits on.
-// Its props are described by a TypeScript type: the parameters of the Flutter constructor.
-// ? = optional (Flutter: a parameter with a default value, or a nullable one)
+// Its props are described by a TypeScript type, aka, the parameters of the Flutter constructor.
+// ? = optional
 type GlassCardProps = {
   children: ReactNode;   // what goes inside. Flutter: `child`. JSX passes it by nesting: <GlassCard>...</GlassCard>
   radius?: number;
@@ -27,11 +27,11 @@ type GlassCardProps = {
   style?: ViewStyle;     // extra style from the parent (padding, size)
 };
 
-// { children, radius = 22, ... } takes the props apart, with default values: Flutter's `this.radius = 22`
+
 export function GlassCard({ children, radius = 22, fill = colors.glassFill, style }: GlassCardProps) {
   return (
-    // style can be a list: later entries win, like CSS rules that "cascade" (see the slides).
-    // Here the parent's `style` (e.g. its padding) comes last, so it overrides our padding of 20.
+    // style can be a list: later entries win
+    // Here the parent's style (e.g. its padding) comes last, so it overrides our padding of 20.
     <View style={[styles.glass, { borderRadius: radius, backgroundColor: fill }, style]}>
       {children}
     </View>
@@ -40,13 +40,14 @@ export function GlassCard({ children, radius = 22, fill = colors.glassFill, styl
   // sky gradient, so a blur would change nothing visible: we keep just the fill and the border.
 }
 
-// ─── InfoChip ───────────────────────────────────────────────────────────────
+// InfoChip
 // A small glass chip: an icon, a value and a label ("80%" / "Humidity").
 type InfoChipProps = { icon: IconName; value: string; label: string };
 
 export function InfoChip({ icon, value, label }: InfoChipProps) {
   return (
     <GlassCard radius={14} fill={colors.chipFill} style={styles.chip}>
+
       {/* Flutter: Row. In React Native every View is a column by default: flexDirection 'row' makes a row */}
       <View style={styles.row}>
         <MaterialIcons name={icon} size={16} color={colors.ink} />
@@ -61,9 +62,9 @@ export function InfoChip({ icon, value, label }: InfoChipProps) {
   );
 }
 
-// ─── WeatherIcon ────────────────────────────────────────────────────────────
+// WeatherIcon
 // The big icon of the weather. Flutter used a switch on the condition: here an object
-// works as a table, condition → icon and colour. Unknown conditions fall back to a cloud.
+// works as a table, condition -> icon and colour
 const conditionIcons: Record<string, { name: IconName; color: string }> = {
   Clear: { name: 'wb-sunny', color: colors.sun },
   Clouds: { name: 'cloud', color: colors.ink },
@@ -80,7 +81,7 @@ export function WeatherIcon({ condition, size = 96 }: WeatherIconProps) {
   return <MaterialIcons name={icon.name} size={size} color={icon.color} />;
 }
 
-// ─── WeatherCard ────────────────────────────────────────────────────────────
+// WeatherCard
 // The centre of the screen: city and heart, big icon, temperature, description, two chips.
 // Same props as the Flutter WeatherCard.
 type WeatherCardProps = {
@@ -94,7 +95,7 @@ type WeatherCardProps = {
 };
 
 export function WeatherCard(props: WeatherCardProps) {
-  // here we keep `props` whole and write props.city, props.temp... (the other form shown in the slides)
+  // here we keep 'props' whole and write props.city, props.temp... (the other form shown in the slides)
   return (
     <View style={{ alignItems: 'center' }}>
       <View style={styles.row}>
@@ -122,7 +123,7 @@ export function WeatherCard(props: WeatherCardProps) {
   );
 }
 
-// ─── SearchField ────────────────────────────────────────────────────────────
+// SearchField
 // Only the look of a search field, as in Lab 1: tapping it does nothing yet (no state today).
 export function SearchField() {
   return (
@@ -136,7 +137,7 @@ export function SearchField() {
   );
 }
 
-// ─── GlassIconButton ────────────────────────────────────────────────────────
+// GlassIconButton
 // The 34×34 glass square of the top bar (the settings button).
 export function GlassIconButton({ icon }: { icon: IconName }) {
   // the props type can also be written in place, without a name: { icon: IconName }
@@ -147,7 +148,7 @@ export function GlassIconButton({ icon }: { icon: IconName }) {
   );
 }
 
-// ─── BottomTabBar ───────────────────────────────────────────────────────────
+// BottomTabBar
 // Two tabs. Not exported: only BottomTabBar uses TabItem (Flutter: the private _TabItem).
 function TabItem({ icon, label, active }: { icon: IconName; label: string; active: boolean }) {
   return (

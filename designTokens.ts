@@ -1,12 +1,8 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // DESIGN TOKENS
-// The same colours and text sizes as design_tokens.dart in the Flutter app.
-// Every component reads from here instead of hard-coding values, so the look stays consistent.
-//
+
 // Flutter: classes AppColors and AppText with static fields.
 // React Native: plain JavaScript objects, exported by name (named exports).
 // Another file imports them with:  import { colors, text } from './designTokens';
-// ─────────────────────────────────────────────────────────────────────────────
 
 import { StyleSheet } from 'react-native';
 

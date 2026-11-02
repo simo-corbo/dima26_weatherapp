@@ -1,7 +1,7 @@
-# Lab 5 — the weather app in React Native
+# Lab 6 — the weather app in React Native
 
-This is the `react-native` branch of the course repository. The Flutter app (Labs 1–4 and the
-bonus lab) is on `main`; this branch holds only the React Native version, with its own history.
+This is the `react-native` branch of the course repository. The Flutter app (Labs 1–5) is on
+`main`; this branch holds only the React Native version, with its own history.
 
 The Home screen of Lab 1 (city, big icon, temperature, two chips, search field, tab bar),
 rebuilt in React Native with Expo. Same sizes, same colours, no state yet: tapping does nothing.

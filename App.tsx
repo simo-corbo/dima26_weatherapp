@@ -1,14 +1,14 @@
-// Lab 5: the weather screen of Lab 1, rebuilt in React Native.
-// Same screen, same sizes, same colours: only the framework changes.
-//
+// Lab 6: the weather screen of Lab 1, rebuilt in React Native.
+// Same screen, same sizes, same colours
+
 // This file is the start of the app. index.ts (made by create-expo-app) imports App from here
-// and hands it to React Native. Flutter: main() and runApp(const WeatherApp()).
+// and hands it to React Native. it is the equivalent of Flutter: main() and runApp(const WeatherApp()).
 
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'; // npx expo install react-native-safe-area-context
-import { BottomTabBar, GlassIconButton, SearchField, WeatherCard } from './components'; // named imports
-import { skyGradient, text } from './designTokens';
+import { BottomTabBar, GlassIconButton, SearchField, WeatherCard } from './components'; // here we import the components we made
+import { skyGradient, text } from './designTokens'; // here we import the design tokens we made, taken from the design contract
 
 // The screen. Flutter: HomeScreen, a StatelessWidget whose build returns a Scaffold.
 function HomeScreen() {
@@ -24,14 +24,14 @@ function HomeScreen() {
           <Text style={text.screenTitle}>Weather</Text>
           <GlassIconButton icon="settings" />
         </View>
-        <View style={{ height: 12 }} />
-        <SearchField />
+        <View style={{ height: 12 }} />{/* a spacer, in Flutter: SizedBox(height: 12) */}
+        <SearchField />{/* the search field, with its glassy background and the search icon */}
 
         {/* the card in the middle of the free space.
             Flutter: Spacer(), WeatherCard, Spacer(). Here one View with flex: 1 takes all the
             space left, and centres its child: the same result with one element */}
         <View style={styles.middle}>
-          <WeatherCard
+          <WeatherCard 
             city="London"
             condition="Rain"
             temp={12}
@@ -39,12 +39,11 @@ function HomeScreen() {
             humidity={80}
             windKmh={15}
             saved={true}
-          />
-        </View>
+          />{/* this is th weather card with static data, later we will make it dynamic*/}
+        </View>{/* here we close the middle view, it has the same principle of HTML */}
 
         <BottomTabBar />
       </SafeAreaView>
-      {/* the clock and the battery at the top in white, readable on our blue sky */}
       <StatusBar style="light" />
     </View>
   );

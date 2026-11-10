@@ -2,8 +2,9 @@
   "expo": {
     "name": "rn_weather",
     "slug": "rn_weather",
+    "scheme": "rnweather",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -23,7 +24,8 @@
     },
     "plugins": [
       "@react-native-vector-icons/material-icons",
-      "expo-font"
+      "expo-font",
+      "expo-router"
     ]
   }
 }

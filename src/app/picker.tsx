@@ -12,7 +12,7 @@ const cities = ['Bergamo', 'Milano', 'London', 'Beijing', 'Oslo', 'New York', 'W
 
 export default function PickerScreen() {
   const router = useRouter();       // to move between screens
-  const { setCity } = useWeather(); // the shared city
+  const { setCity, t } = useWeather(); // the shared city. LAB 8: and the texts
 
   function pick(city: string) {
     if (city === '') return; // empty text: stay here
@@ -21,7 +21,7 @@ export default function PickerScreen() {
   }
 
   return (
-    <SubScreen title="Choose a city">
+    <SubScreen title={t.chooseCity}>
       <SearchField onSubmit={pick} />
       <FlatList
         data={cities}

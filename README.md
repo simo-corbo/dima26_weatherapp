@@ -42,6 +42,15 @@ npm install          # the first time only: downloads the packages into node_mod
 npx expo start       # starts the development server (Metro), and prints a QR code
 ```
 
+**Since Lab 8 the weather is real:** you need a free OpenWeather key (https://openweathermap.org/api).
+Copy `.env.example` to `.env.local` and write your key after the `=`. `.env.local` is in `.gitignore`:
+the key never goes to GitHub. Without it, the app shows "No API key".
+
+```bash
+cp .env.example .env.local   # then write your key in .env.local, and restart npx expo start
+npm test                     # Lab 8: runs the tests in tests/ (no phone, no internet, no key needed)
+```
+
 Then, in the terminal where Expo is running:
 
 | Press / do | Opens the app on |

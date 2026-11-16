@@ -9,8 +9,8 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context'; // npx expo install react-native-safe-area-context
-import { BottomTabBar, CityCard, GlassIconButton, SavedList, SearchBar, SideRail } from '../components'; // here we import the components we made
-import { skyGradient, text } from '../designTokens'; // here we import the design tokens we made, taken from the design contract
+import { BottomTabBar, CityCard, Forecast, GlassIconButton, SavedList, SearchBar, SideRail } from '../components'; // here we import the components we made
+import { skyOf, text } from '../designTokens'; // here we import the design tokens we made, taken from the design contract
 import { useWeather } from '../state';
 
 // The screen. Flutter: HomeScreen, a StatelessWidget whose build returns a Scaffold.
@@ -26,7 +26,8 @@ export default function HomeScreen() {
 
   // LAB 7: the city and the saved cities are needed by other screens too (the picker changes the city,
   // the city screen shows the hearts): they live in the shared state, src/state.tsx
-  const { city, saved } = useWeather();
+  // LAB 8: also the setting "Use my location", the night sky and the texts
+  const { city, saved, myLocation, dark, t } = useWeather();
   const router = useRouter(); // to open the other screens
 
   // LAB 7: the size of the window, updated when it changes (rotation, iPad split view).
@@ -40,9 +41,13 @@ export default function HomeScreen() {
     router.push({ pathname: '/city/[name]', params: { name: c } });
   }
 
+  // LAB 8: which weather Home shows. No city chosen yet and "Use my location" on: where the phone is (null).
+  // Otherwise the chosen city, or London.
+  const here = city === null && myLocation;
+
   return (
     // the sky behind everything, from edge to edge (also behind the notch and the home bar)
-    <View style={styles.sky}>
+    <View style={[styles.sky, { backgroundImage: skyOf(dark) }]}>{/* LAB 8: the sky, or the night sky */}
       {/* SafeAreaView keeps its content away from the notch, the status bar and the home bar.
           Flutter: SafeArea. The padding of 20 on the sides is the Flutter Padding */}
       <SafeAreaView style={[styles.safe, { paddingHorizontal: wide ? 32 : 20 }]}>{/* LAB 7: more room on the sides when wide */}
@@ -54,7 +59,7 @@ export default function HomeScreen() {
             {/* the top bar: title on the left, settings on the right.
                 Flutter: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween) */}
             <View style={styles.topBar}>
-              <Text style={text.screenTitle}>Weather</Text>
+              <Text style={text.screenTitle}>{t.appTitle}</Text>
               <GlassIconButton icon="settings" onPress={() => router.push('/settings')} />{/* LAB 7 */}
             </View>
             <View style={{ height: 12 }} />{/* a spacer, in Flutter: SizedBox(height: 12) */}
@@ -69,7 +74,7 @@ export default function HomeScreen() {
                 very big text), it scrolls. Flutter: SingleChildScrollView */}
             {tab === 0 ? (
               <ScrollView style={styles.middle} contentContainerStyle={styles.centred}>
-                <CityCard city={city} />
+                <CityCard city={here ? null : city ?? 'London'} />
               </ScrollView>
             ) : wide ? (
               // LAB 7: wide Saved tab: master-detail. The list on the left, the selected city on the right
@@ -80,9 +85,12 @@ export default function HomeScreen() {
                 <View style={{ width: 32 }} />
                 <ScrollView style={styles.middle} contentContainerStyle={styles.centred}>
                   {selected === null ? (
-                    <Text style={text.description}>Choose a city on the left</Text>
+                    <Text style={text.description}>{t.chooseOnTheLeft}</Text>
                   ) : (
-                    <CityCard city={selected} />
+                    <>{/* LAB 8: the card and the forecast, as on the city screen. <> </> groups two tags without a View */}
+                      <CityCard city={selected} />
+                      <Forecast city={selected} />
+                    </>
                   )}
                 </ScrollView>
               </View>
@@ -103,7 +111,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   sky: {
     flex: 1, // all the screen: the root has the size of the screen, flex 1 fills it
-    backgroundImage: skyGradient,
+    // LAB 8: the gradient (backgroundImage) is chosen in the code: the sky, or the night sky
   },
   safe: {
     flex: 1, // without it, the SafeAreaView would be only as tall as its content

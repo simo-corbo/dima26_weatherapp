@@ -26,6 +26,11 @@ export const colors = {
   glassStroke: 'rgba(255, 255, 255, 0.26)',
   white85: 'rgba(255, 255, 255, 0.85)', // search icon
   white80: 'rgba(255, 255, 255, 0.80)', // heart, not saved
+
+  // LAB 8: dark mode. The same sky at night: same stops, darker blues. Glass, white text and the sun don't change
+  nightTop: '#2A3F6B',
+  nightMid: '#1C2C4F',
+  nightBottom: '#111B33',
 };
 
 // The full-screen background: top to bottom, three stops (0%, 52%, 100%).
@@ -33,6 +38,11 @@ export const colors = {
 // given to the style property backgroundImage (as in the professor's slides, "Variation III").
 export const skyGradient =
   `linear-gradient(180deg, ${colors.skyTop} 0%, ${colors.skyMid} 52%, ${colors.skyBottom} 100%)`;
+
+// LAB 8: the night sky, and the one to use. Every screen asks the shared state if it's dark (see state.tsx)
+export const nightGradient =
+  `linear-gradient(180deg, ${colors.nightTop} 0%, ${colors.nightMid} 52%, ${colors.nightBottom} 100%)`;
+export const skyOf = (dark: boolean) => (dark ? nightGradient : skyGradient);
 
 // The text styles. StyleSheet.create checks the names and values once, when the file is loaded.
 // Flutter: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ...)

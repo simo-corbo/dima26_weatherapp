@@ -7,13 +7,15 @@
 // Each component is exported by name: App.tsx imports them with
 //   import { WeatherCard, SearchField, ... } from './components';
 
-import { ReactNode, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View, ViewStyle, useWindowDimensions } from 'react-native';
+import { ReactNode, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View, ViewStyle, useWindowDimensions } from 'react-native';
 import { MaterialIcons } from '@react-native-vector-icons/material-icons'; // npx expo install @react-native-vector-icons/material-icons
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, skyGradient, text } from './designTokens';
+import { colors, skyOf, text } from './designTokens';
 import { useWeather } from './state';
+import { DayForecast, fetchCurrent, fetchCurrentAt, fetchForecast } from './weather'; // LAB 8
+import { currentPosition } from './location'; // LAB 8
 
 // The names of the Material icons, as TypeScript knows them ('settings', 'search', ...).
 // Flutter: Icons.settings_rounded. Here: <MaterialIcons name="settings" />, the same icon set.
@@ -101,6 +103,7 @@ type WeatherCardProps = {
 };
 
 export function WeatherCard(props: WeatherCardProps) {
+  const { t } = useWeather(); // LAB 8: the labels of the chips, in the app's language
   // here we keep 'props' whole and write props.city, props.temp... (the other form shown in the slides)
   // LAB 7: fontScale is the text size the user chose in the phone's settings (1 = normal).
   // With very big text the two chips don't fit side by side: one above the other instead.
@@ -114,7 +117,7 @@ export function WeatherCard(props: WeatherCardProps) {
         <View style={{ width: 8 }} />
         {/* LAB 7: Pressable makes what's inside tappable. Flutter: GestureDetector(onTap: ...).
             The card doesn't change saved itself (props are read-only): it asks its parent */}
-        <Pressable onPress={props.onToggleSave}>
+        <Pressable onPress={props.onToggleSave} testID="heart">{/* LAB 8: testID: how a test finds it */}
           {/* { } in JSX: any JavaScript expression. Here a ternary, exactly like Dart's */}
           <MaterialIcons
             name={props.saved ? 'favorite' : 'favorite-border'}
@@ -126,54 +129,163 @@ export function WeatherCard(props: WeatherCardProps) {
       <View style={{ height: 8 }} />
       <WeatherIcon condition={props.condition} size={96} />
       {/* a template string: `${...}` puts a value inside a text. Dart: '$temp°' */}
-      {/* LAB 7: in °F if the user chose it. Math.round: Dart's .round() */}
-      <Text style={text.temp}>{`${props.celsius ? props.temp : Math.round((props.temp * 9) / 5 + 32)}°`}</Text>
+      {/* LAB 7: in °F if the user chose it. LAB 8: the conversion moved to formatTemp, the forecast needs it too */}
+      <Text style={text.temp}>{formatTemp(props.temp, props.celsius)}</Text>
       <Text style={text.description}>{props.description}</Text>
       <View style={{ height: 16 }} />
       <View style={[styles.row, { flexDirection: stacked ? 'column' : 'row' }]}>
-        <InfoChip icon="water-drop" value={`${props.humidity}%`} label="Humidity" />
+        <InfoChip icon="water-drop" value={`${props.humidity}%`} label={t.humidity} />
         <View style={{ width: 10, height: 10 }} />{/* LAB 7: the gap works in both directions */}
-        <InfoChip
-          icon="air"
-          value={props.kmh ? `${props.windKmh} km/h` : `${Math.round(props.windKmh * 0.621)} mph`}
-          label="Wind"
-        />
+        <InfoChip icon="air" value={formatWind(props.windKmh, props.kmh)} label={t.wind} />
       </View>
     </View>
   );
 }
 
+// LAB 8: the units, in one place. The data is always °C and km/h: we convert only to show it,
+// so changing the unit never changes the data. Math.round: Dart's .round()
+export const formatTemp = (temp: number, celsius: boolean) => `${celsius ? temp : Math.round((temp * 9) / 5 + 32)}°`;
+export const formatWind = (kmh: number, useKmh: boolean) => (useKmh ? `${kmh} km/h` : `${Math.round(kmh * 0.621)} mph`);
+
+// LAB 8: the three moments of a request. TypeScript lets us read data or message only in the right moment
+type Request<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'done'; data: T };
+
+// LAB 8: asks the server when the component appears, and again every time `key` changes (another city).
+// `ask` is the function that makes the request: fetchCurrent(city), fetchForecast(city)...
+function useRequest<T>(key: string, ask: () => Promise<T>): Request<T> {
+  const [request, setRequest] = useState<Request<T>>({ status: 'loading' });
+  useEffect(() => {
+    let current = true; // false as soon as the key changes or the component disappears
+    async function run() {
+      setRequest({ status: 'loading' });
+      try {
+        const data = await ask(); // the component goes on living while we wait
+        if (current) setRequest({ status: 'done', data });
+      } catch (error) {
+        if (current) setRequest({ status: 'error', message: (error as Error).message });
+      }
+    }
+    run();
+    // the cleanup: React runs it before the effect runs again, and when the component disappears.
+    // An answer that arrives late, for the old city, is thrown away.
+    return () => {
+      current = false;
+    };
+    // the key says which request this is. `ask` is a new function at every render: it stays out of the list
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return request;
+}
+
+// LAB 8: while we wait for the server: the system's spinner
+export function LoadingView() {
+  return <ActivityIndicator size="large" color={colors.ink} style={{ padding: 24 }} />;
+}
+
+// LAB 8: when the request fails: an icon and a sentence the user understands, never a stack trace
+export function ErrorView({ message }: { message: string }) {
+  return (
+    <View style={{ alignItems: 'center', padding: 24 }}>
+      <MaterialIcons name="cloud-off" size={44} color={colors.ink} />
+      <View style={{ height: 12 }} />
+      <Text style={[text.description, { textAlign: 'center' }]}>{message}</Text>
+    </View>
+  );
+}
+
+// LAB 8: "Updated 12 s ago". A clock that ticks every second, from the moment the weather is shown.
+function UpdatedAgo() {
+  const { t } = useWeather();
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    // (s) => s + 1: "one more than the latest value". The interval keeps the function it got the first
+    // time: inside it, `seconds` would stay 0 forever, so seconds + 1 would always give 1
+    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id); // the cleanup: stop the clock when the card goes away
+  }, []); // [] : start it once, when the component appears
+  return <Text style={text.chipLabel}>{t.updated(seconds)}</Text>;
+}
+
 // LAB 7: the card of one city, with its data. It reads the hearts and the units from the shared
 // state by itself: Home, the right pane of Saved and the detail screen just give it the city.
-// The weather is still invented: only the city changes.
-export function CityCard({ city }: { city: string }) {
-  const { saved, toggleSaved, celsius, kmh } = useWeather();
+// LAB 8: the weather comes from the server. city null = the weather where the phone is.
+export function CityCard({ city }: { city: string | null }) {
+  const { saved, toggleSaved, celsius, kmh, t } = useWeather();
+  const request = useRequest(city ?? 'here', async () => {
+    if (city !== null) return fetchCurrent(city);
+    const { lat, lon } = await currentPosition(); // first the position, then the weather there
+    return fetchCurrentAt(lat, lon);
+  });
+  if (request.status === 'loading') return <LoadingView />;
+  if (request.status === 'error') return <ErrorView message={request.message} />;
+
+  const weather = request.data;
+  const name = city ?? weather.name; // where the phone is, the server tells us the city
   return (
-    <WeatherCard
-      city={city}
-      condition="Rain"
-      temp={12}
-      description="Light rain"
-      humidity={80}
-      windKmh={15}
-      saved={saved.includes(city)}
-      onToggleSave={() => toggleSaved(city)}
-      celsius={celsius}
-      kmh={kmh}
-    />
+    <View style={{ alignItems: 'center' }}>
+      <WeatherCard
+        city={name}
+        condition={weather.condition}
+        temp={weather.temp}
+        description={t.conditions[weather.condition] ?? weather.condition} // "Rain" -> "Pioggia"; unknown: as it is
+        humidity={weather.humidity}
+        windKmh={weather.windKmh}
+        saved={saved.includes(name)}
+        onToggleSave={() => toggleSaved(name)}
+        celsius={celsius}
+        kmh={kmh}
+      />
+      <View style={{ height: 12 }} />
+      <UpdatedAgo />
+    </View>
+  );
+}
+
+// LAB 8: one day of the forecast: the day, the icon, the max and the min
+function DayCard({ label, day, celsius }: { label: string; day: DayForecast; celsius: boolean }) {
+  return (
+    <View style={{ alignItems: 'center', paddingHorizontal: 8 }}>
+      <Text style={text.chipLabel}>{label}</Text>
+      <WeatherIcon condition={day.condition} size={24} />
+      <Text style={text.chipValue}>{formatTemp(day.max, celsius)}</Text>
+      <Text style={text.chipLabel}>{formatTemp(day.min, celsius)}</Text>
+    </View>
+  );
+}
+
+// LAB 8: the next 5 days of a city, under its card (city screen, and right pane of Saved)
+export function Forecast({ city }: { city: string }) {
+  const { celsius, t } = useWeather();
+  const request = useRequest(city, () => fetchForecast(city));
+  if (request.status === 'loading') return <LoadingView />;
+  if (request.status === 'error') return null; // the card above already says what went wrong
+  return (
+    <View style={[styles.row, { marginTop: 24 }]}>
+      {/* map: one DayCard for each day. Five items, always: no need for a FlatList. key: as in a FlatList */}
+      {request.data.map((day, index) => (
+        <DayCard
+          key={day.date.toISOString()}
+          // the first day is "Today"; the others, the short name of the day in the app's language ("Tue", "mar")
+          label={index === 0 ? t.today : day.date.toLocaleDateString(t.locale, { weekday: 'short' })}
+          day={day}
+          celsius={celsius}
+        />
+      ))}
+    </View>
   );
 }
 
 // LAB 7: the search bar of Home: only the look of a field. Tapping it opens the picker.
 // Flutter: SearchField(onTap: _pickCity)
 export function SearchBar({ onPress }: { onPress: () => void }) {
+  const { t } = useWeather(); // LAB 8
   return (
     <Pressable onPress={onPress}>
       <GlassCard radius={14} fill={colors.chipFill} style={styles.search}>
         <View style={styles.row}>
           <MaterialIcons name="search" size={18} color={colors.white85} />
           <View style={{ width: 10 }} />
-          <Text style={text.searchHint}>Search city</Text>
+          <Text style={text.searchHint}>{t.searchCity}</Text>
         </View>
       </GlassCard>
     </Pressable>
@@ -186,6 +298,7 @@ export function SearchField({ onSubmit }: { onSubmit: (city: string) => void }) 
   // LAB 7: what's being typed is local state: only the field needs it, so it stays here.
   // The chosen city is not: HomeScreen gets it through onSubmit.
   const [typed, setTyped] = useState('');
+  const { t } = useWeather(); // LAB 8
   return (
     <GlassCard radius={14} fill={colors.chipFill} style={styles.search}>
       <View style={styles.row}>
@@ -194,7 +307,7 @@ export function SearchField({ onSubmit }: { onSubmit: (city: string) => void }) 
         {/* Flutter: TextField(onChanged: ..., onSubmitted: ...) */}
         <TextInput
           style={[text.searchHint, styles.input]}
-          placeholder="Search city"
+          placeholder={t.searchCity}
           placeholderTextColor={colors.inkHint}
           onChangeText={setTyped}               // every key: keep the text
           onSubmitEditing={() => onSubmit(typed)} // enter: hand the city to the parent
@@ -209,11 +322,12 @@ export function SearchField({ onSubmit }: { onSubmit: (city: string) => void }) 
 // LAB 7: the saved cities. Flutter: ListView with a ListTile for each city.
 // FlatList only builds the rows that are on screen: it needs the data and how to draw one item.
 export function SavedList({ cities, onPick }: { cities: string[]; onPick: (city: string) => void }) {
+  const { t } = useWeather(); // LAB 8
   if (cities.length === 0) {
     // LAB 7: flex 1, like the FlatList: the hint takes the free space, so the tab bar stays at the bottom
     return (
       <View style={{ flex: 1 }}>
-        <Text style={text.searchHint}>No saved cities yet: tap the heart.</Text>
+        <Text style={text.searchHint}>{t.noSaved}</Text>
       </View>
     );
   }
@@ -249,8 +363,9 @@ export function GlassIconButton({ icon, onPress }: { icon: IconName; onPress: ()
 // a back button and the title. Flutter: Scaffold with an AppBar, which adds the back arrow.
 export function SubScreen({ title, children }: { title: string; children: ReactNode }) {
   const router = useRouter();
+  const { dark } = useWeather(); // LAB 8: the sky, or the night sky
   return (
-    <View style={styles.sky}>
+    <View style={[styles.sky, { backgroundImage: skyOf(dark) }]}>
       <SafeAreaView style={styles.safe}>
         <View style={styles.row}>
           {/* router.back(): remove this screen from the stack. Flutter: Navigator.pop(context) */}
@@ -281,11 +396,12 @@ function TabItem({ icon, label, active, onPress }: { icon: IconName; label: stri
 // LAB 7: the tab bar doesn't know which tab is open: HomeScreen tells it (activeIndex),
 // and the bar tells HomeScreen when a tab is tapped (onTabPress). Flutter: onTap: (index) => ...
 export function BottomTabBar({ activeIndex, onTabPress }: { activeIndex: number; onTabPress: (index: number) => void }) {
+  const { t } = useWeather(); // LAB 8
   return (
     <View style={[styles.row, { justifyContent: 'center' }]}>
-      <TabItem icon="home" label="Home" active={activeIndex === 0} onPress={() => onTabPress(0)} />
+      <TabItem icon="home" label={t.home} active={activeIndex === 0} onPress={() => onTabPress(0)} />
       <View style={{ width: 48 }} />
-      <TabItem icon="bookmark" label="Saved" active={activeIndex === 1} onPress={() => onTabPress(1)} />
+      <TabItem icon="bookmark" label={t.saved} active={activeIndex === 1} onPress={() => onTabPress(1)} />
     </View>
   );
 }
@@ -293,11 +409,12 @@ export function BottomTabBar({ activeIndex, onTabPress }: { activeIndex: number;
 // LAB 7: the same two tabs as the BottomTabBar, in a column on the left, for wide screens.
 // Same TabItem, same look: only the arrangement changes (a column instead of a row).
 export function SideRail({ activeIndex, onTabPress }: { activeIndex: number; onTabPress: (index: number) => void }) {
+  const { t } = useWeather(); // LAB 8
   return (
     <View style={{ justifyContent: 'center', paddingRight: 20 }}>
-      <TabItem icon="home" label="Home" active={activeIndex === 0} onPress={() => onTabPress(0)} />
+      <TabItem icon="home" label={t.home} active={activeIndex === 0} onPress={() => onTabPress(0)} />
       <View style={{ height: 32 }} />
-      <TabItem icon="bookmark" label="Saved" active={activeIndex === 1} onPress={() => onTabPress(1)} />
+      <TabItem icon="bookmark" label={t.saved} active={activeIndex === 1} onPress={() => onTabPress(1)} />
     </View>
   );
 }
@@ -317,7 +434,7 @@ const styles = StyleSheet.create({
   chip: { paddingHorizontal: 13, paddingVertical: 9 },
   search: { paddingHorizontal: 14, paddingVertical: 12 },
   input: { flex: 1, padding: 0, color: colors.ink }, // LAB 7: the field takes the rest of the row; padding 0: no extra space on Android
-  sky: { flex: 1, backgroundImage: skyGradient }, // LAB 7: the same sky as Home
+  sky: { flex: 1 }, // LAB 7: the same sky as Home. LAB 8: the gradient is chosen in SubScreen (day or night)
   safe: { flex: 1, paddingHorizontal: 20 },
   cityRow: { minHeight: 56, justifyContent: 'center', paddingHorizontal: 16 }, // LAB 7: a row of the saved list, as tall as a ListTile
   iconButton: {

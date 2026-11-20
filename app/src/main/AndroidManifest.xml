@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The manifest: what the phone must know about the app before running it.
+     Its name and icon, its activities, and (from the next lab) the permissions it asks for. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:localeConfig="@xml/locales_config"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Weather">
+        <!-- localeConfig: the list of our languages (res/xml/locales_config.xml), for the phone's settings -->
+        <!-- Our only activity. exported="true": other apps (the launcher) may start it.
+             adjustResize: when the keyboard opens, the window shrinks above it. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- MAIN + LAUNCHER: this activity is the one the app icon opens -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

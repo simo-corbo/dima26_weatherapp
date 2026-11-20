@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every text the user reads, in English. res/values-it/strings.xml has the same names in Italian:
+     Android picks the file of the phone's language (or the one chosen for this app), English otherwise.
+     In Kotlin: stringResource(R.string.search_city) -->
+<resources>
+    <string name="app_name">Weather</string>
+    <string name="search_city">Search city</string>
+    <string name="choose_city">Choose a city</string>
+    <string name="choose_on_left">Choose a city on the left</string>
+    <string name="no_saved">No saved cities yet: tap the heart.</string>
+    <string name="home">Home</string>
+    <string name="saved">Saved</string>
+    <string name="settings">Settings</string>
+    <string name="back">Back</string>
+    <string name="save">Save</string>
+    <string name="remove_saved">Remove from saved</string>
+    <string name="humidity">Humidity</string>
+    <string name="wind">Wind</string>
+    <string name="light_rain">Light rain</string>
+    <string name="temperature_celsius">Temperature in °C</string>
+    <string name="wind_kmh">Wind in km/h</string>
+</resources>

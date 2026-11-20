@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used instead of res/values/colors.xml when the phone is in dark mode: the window's night colour -->
+<resources>
+    <color name="sky">#FF1C2C4F</color>
+</resources>

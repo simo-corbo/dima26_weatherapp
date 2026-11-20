@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window behind our screens: no system title bar, and the sky colour,
+         so the first frame (before Compose draws) is not white -->
+    <style name="Theme.Weather" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/sky</item>
+    </style>
+</resources>

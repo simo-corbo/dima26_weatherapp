@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The languages of the app. With this list, Android (13 and later) lets the user pick the app's
+     language in the phone's settings: Settings > Apps > Weather > Language -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="it" />
+</locale-config>

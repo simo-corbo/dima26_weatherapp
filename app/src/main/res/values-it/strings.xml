@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The same names as res/values/strings.xml, in Italian -->
+<resources>
+    <string name="app_name">Meteo</string>
+    <string name="search_city">Cerca città</string>
+    <string name="choose_city">Scegli una città</string>
+    <string name="choose_on_left">Scegli una città a sinistra</string>
+    <string name="no_saved">Nessuna città salvata: tocca il cuore.</string>
+    <string name="home">Home</string>
+    <string name="saved">Salvate</string>
+    <string name="settings">Impostazioni</string>
+    <string name="back">Indietro</string>
+    <string name="save">Salva</string>
+    <string name="remove_saved">Togli dalle salvate</string>
+    <string name="humidity">Umidità</string>
+    <string name="wind">Vento</string>
+    <string name="light_rain">Pioggia leggera</string>
+    <string name="temperature_celsius">Temperatura in °C</string>
+    <string name="wind_kmh">Vento in km/h</string>
+</resources>
